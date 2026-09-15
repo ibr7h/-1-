@@ -1,4 +1,4 @@
-name: Keep print signatures on page
+name: Raise first-page footer further
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Raise footer and keep signatures together
+      - name: Raise first-page vacation and signatures further
         run: python3 scripts/spacing_patch.py
 
-      - name: Commit print pagination correction
+      - name: Commit further footer lift
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Keep signature captions on the same A4 page'
+          git commit -m 'Raise first-page footer another 22 mm for iPhone A4 print'
           git push origin HEAD:main
