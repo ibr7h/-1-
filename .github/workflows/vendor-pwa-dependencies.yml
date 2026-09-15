@@ -1,0 +1,78 @@
+name: Vendor PWA dependencies
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/vendor-pwa-dependencies.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download pinned Tailwind browser runtime
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 'https://cdn.tailwindcss.com/3.4.17' \
+            -o operational-plan-pwa/tailwind-play.js
+
+      - name: Download Cairo variable font and OFL license
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf' \
+            -o operational-plan-pwa/Cairo.ttf
+          curl -fL --retry 3 \
+            'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/OFL.txt' \
+            -o operational-plan-pwa/CAIRO_OFL.txt
+
+      - name: Save Tailwind upstream license
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 \
+            'https://raw.githubusercontent.com/tailwindlabs/tailwindcss/v3.4.17/LICENSE' \
+            -o operational-plan-pwa/TAILWIND_LICENSE.txt
+
+      - name: Configure Cairo as a local font
+        run: |
+          cat > operational-plan-pwa/cairo-local.css <<'EOF'
+          /* Cairo — local copy from the official Google Fonts repository. */
+          @font-face {
+            font-family: 'Cairo';
+            src: url('./Cairo.ttf') format('truetype');
+            font-weight: 200 1000;
+            font-style: normal;
+            font-display: swap;
+          }
+
+          :root {
+            font-family: 'Cairo', Tahoma, Arial, sans-serif;
+          }
+          EOF
+
+      - name: Commit vendored dependencies
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            operational-plan-pwa/tailwind-play.js \
+            operational-plan-pwa/Cairo.ttf \
+            operational-plan-pwa/CAIRO_OFL.txt \
+            operational-plan-pwa/TAILWIND_LICENSE.txt \
+            operational-plan-pwa/cairo-local.css
+          if git diff --cached --quiet; then
+            echo 'Dependencies are already up to date.'
+            exit 0
+          fi
+          git commit -m 'Vendor PWA runtime dependencies for offline use'
+          git push origin HEAD:main
