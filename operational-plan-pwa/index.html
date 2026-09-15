@@ -248,34 +248,21 @@
             /* تقليل الفراغ بين نهاية الجدول وشريط إجازة منتصف العام. */
             #page-1 {
                 justify-content: flex-start !important;
-                position: relative !important;
             }
 
             #midyear-vacation-bar {
-                position: absolute !important;
-                top: 216mm !important;
-                right: 4mm !important;
-                left: 4mm !important;
-                margin: 0 !important;
+                margin-top: -72mm !important;
                 flex: 0 0 auto !important;
-                z-index: 2 !important;
-                break-inside: avoid !important;
-                page-break-inside: avoid !important;
             }
 
             #page-1-signatures {
-                position: absolute !important;
-                top: 225mm !important;
-                right: 4mm !important;
-                left: 4mm !important;
-                margin: 0 !important;
+                margin-top: 0 !important;
                 flex: 0 0 auto !important;
                 display: grid !important;
                 grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
                 align-items: end !important;
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
-                z-index: 2 !important;
             }
 
             #page-1-signatures > div {
