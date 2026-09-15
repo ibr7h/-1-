@@ -1,4 +1,4 @@
-name: Mobile A4 print fit
+name: Native A4 print correction
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Apply mobile print patch
+      - name: Apply native A4 and direct-print patch
         run: python3 scripts/mobile_print_patch.py
 
-      - name: Commit print fix
+      - name: Commit print correction
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Fix mobile A4 printing at 78 percent scale'
+          git commit -m 'Restore 100 percent A4 printing and prevent automatic print blocking'
           git push origin HEAD:main
