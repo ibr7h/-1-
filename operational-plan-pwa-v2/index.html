@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="الخطة التشغيلية" />
+  <title>الخطة التشغيلية المدرسية</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="../operational-plan-pwa/icons/apple-touch-icon.png" />
+  <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar" aria-label="التنقل الرئيسي">
+      <div class="brand-block">
+        <div class="brand-mark">خ</div>
+        <div>
+          <strong>الخطة التشغيلية</strong>
+          <span>إدارة مدرسية ذكية</span>
+        </div>
+      </div>
+
+      <nav class="desktop-nav" id="desktopNav">
+        <button class="nav-item is-active" data-view="dashboard"><span>⌂</span> الرئيسية</button>
+        <button class="nav-item" data-view="schools"><span>🏫</span> المدارس</button>
+        <button class="nav-item" data-view="plans"><span>▦</span> الخطط</button>
+        <button class="nav-item" data-view="calendar"><span>◫</span> التقويم</button>
+        <button class="nav-item" data-view="print"><span>⎙</span> الطباعة</button>
+        <button class="nav-item" data-view="settings"><span>⚙</span> الإعدادات</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <div><strong>يعمل دون اتصال</strong><small>بعد أول فتح للتطبيق</small></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="topbar-title">
+          <span class="eyebrow">المدرسة النشطة</span>
+          <button id="schoolSwitcher" class="school-switcher" type="button">
+            <span id="activeSchoolName">جاري التحميل…</span>
+            <span class="chevron">⌄</span>
+          </button>
+          <div id="schoolMenu" class="school-menu" hidden></div>
+        </div>
+        <div class="topbar-actions">
+          <button id="installBtn" class="icon-button install-button" type="button" hidden title="تثبيت التطبيق">＋</button>
+          <button id="addSchoolTopBtn" class="primary-button compact" type="button">＋ مدرسة</button>
+        </div>
+      </header>
+
+      <section id="viewRoot" class="view-root" aria-live="polite"></section>
+    </main>
+
+    <nav class="bottom-nav" id="bottomNav" aria-label="التنقل للجوال">
+      <button class="bottom-item is-active" data-view="dashboard"><span>⌂</span><small>الرئيسية</small></button>
+      <button class="bottom-item" data-view="plans"><span>▦</span><small>الخطط</small></button>
+      <button class="bottom-item" data-view="calendar"><span>◫</span><small>التقويم</small></button>
+      <button class="bottom-item" data-view="print"><span>⎙</span><small>الطباعة</small></button>
+      <button class="bottom-item" data-view="settings"><span>⚙</span><small>الإعدادات</small></button>
+    </nav>
+  </div>
+
+  <dialog id="schoolDialog" class="modal">
+    <form id="schoolForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow">ملف المدرسة</span>
+          <h2 id="schoolDialogTitle">إضافة مدرسة</h2>
+        </div>
+        <button class="icon-button" value="cancel" formmethod="dialog" type="submit" aria-label="إغلاق">×</button>
+      </div>
+      <input type="hidden" id="schoolId" />
+      <div class="form-grid">
+        <label class="field full"><span>اسم المدرسة</span><input id="schoolName" required placeholder="مثال: مجمع أبو السلع الابتدائي والمتوسط" /></label>
+        <label class="field"><span>الاسم المختصر</span><input id="schoolShortName" placeholder="مثال: مجمع أبو السلع" /></label>
+        <label class="field"><span>نوع المدرسة</span><select id="schoolType"><option value="complex">مجمع</option><option value="primary">ابتدائي</option><option value="middle">متوسط</option><option value="secondary">ثانوي</option><option value="other">أخرى</option></select></label>
+        <label class="field"><span>المنطقة التعليمية</span><input id="schoolRegion" placeholder="جازان" /></label>
+        <label class="field"><span>الإدارة / المكتب</span><input id="schoolOffice" placeholder="اختياري" /></label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" value="cancel" formmethod="dialog" type="submit">إلغاء</button>
+        <button id="saveSchoolBtn" class="primary-button" type="button">حفظ المدرسة</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="planDialog" class="modal">
+    <form id="planForm" method="dialog" class="modal-card">
+      <div class="modal-head">
+        <div><span class="eyebrow">خطة جديدة</span><h2>إضافة خطة</h2></div>
+        <button class="icon-button" value="cancel" formmethod="dialog" type="submit" aria-label="إغلاق">×</button>
+      </div>
+      <div class="form-grid">
+        <label class="field full"><span>اسم الخطة</span><input id="planName" required value="الخطة التشغيلية" /></label>
+        <label class="field"><span>العام الدراسي</span><input id="planYear" value="1448 هـ" /></label>
+        <label class="field"><span>الفترة / الفصل</span><select id="planTerm"><option value="1">الفترة الأولى</option><option value="2">الفترة الثانية</option></select></label>
+        <label class="field"><span>عدد الأسابيع</span><input id="planWeeks" type="number" min="1" max="30" value="19" /></label>
+        <label class="field"><span>تاريخ البداية</span><input id="planStart" type="date" /></label>
+      </div>
+      <div class="modal-actions">
+        <button class="secondary-button" value="cancel" formmethod="dialog" type="submit">إلغاء</button>
+        <button id="savePlanBtn" class="primary-button" type="button">إنشاء الخطة</button>
+      </div>
+    </form>
+  </dialog>
+
+  <input id="backupFile" type="file" accept="application/json,.json" hidden />
+
+  <script src="./db.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
