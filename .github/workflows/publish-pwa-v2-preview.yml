@@ -1,0 +1,88 @@
+name: Publish PWA v2 preview
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/publish-pwa-v2-preview.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch pwa-v2 branch
+        run: git fetch origin pwa-v2
+
+      - name: Copy PWA v2 preview files
+        run: |
+          set -euo pipefail
+          rm -rf operational-plan-pwa-v2
+          git checkout origin/pwa-v2 -- operational-plan-pwa-v2
+          git show origin/pwa-v2:operational-plan-pwa/print-bridge-v2.js > operational-plan-pwa/print-bridge-v2.js
+
+      - name: Attach inert print bridge to stable template
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path('operational-plan-pwa/index.html')
+          text = index.read_text(encoding='utf-8')
+          bridge = '    <script src="./print-bridge-v2.js"></script>'
+          if bridge not in text:
+              marker = '</body>'
+              if marker not in text:
+                  raise SystemExit('Stable print template closing body not found')
+              text = text.replace(marker, bridge + '\n' + marker, 1)
+              index.write_text(text, encoding='utf-8')
+
+          sw = Path('operational-plan-pwa/sw.js')
+          s = sw.read_text(encoding='utf-8')
+          s = s.replace("abu-sula-operational-plan-v16", "abu-sula-operational-plan-v17")
+          if "'./print-bridge-v2.js'" not in s:
+              s = s.replace("  './cairo-local.css',", "  './cairo-local.css',\n  './print-bridge-v2.js',", 1)
+          sw.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Validate preview JavaScript
+        run: |
+          node --check operational-plan-pwa-v2/db.js
+          node --check operational-plan-pwa-v2/setup-wizard.js
+          node --check operational-plan-pwa-v2/editor.js
+          node --check operational-plan-pwa-v2/print-adapter.js
+          node --check operational-plan-pwa-v2/app.js
+          node --check operational-plan-pwa-v2/sw.js
+          node --check operational-plan-pwa/print-bridge-v2.js
+          node --check operational-plan-pwa/sw.js
+
+      - name: Verify stable print CSS was not changed by this workflow
+        run: |
+          set -euo pipefail
+          git diff -- operational-plan-pwa/index.html > /tmp/stable.diff || true
+          if grep -E '^[+-].*(@media print|@page|page-container|midyear-vacation-bar|page-1-signatures|page-2-signatures)' /tmp/stable.diff; then
+            echo 'Refusing to publish: stable print CSS/layout changed.'
+            exit 1
+          fi
+
+      - name: Commit preview publication
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add operational-plan-pwa-v2 operational-plan-pwa/index.html operational-plan-pwa/print-bridge-v2.js operational-plan-pwa/sw.js
+          if git diff --cached --quiet; then
+            echo 'Preview is already published.'
+            exit 0
+          fi
+          git commit -m 'Publish PWA v2 preview without changing print layout'
+          git push origin HEAD:main
