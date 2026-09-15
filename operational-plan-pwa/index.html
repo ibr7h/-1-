@@ -251,30 +251,48 @@
             }
 
             #midyear-vacation-bar {
-                margin-top: -15mm !important;
+                margin-top: -33mm !important;
                 flex: 0 0 auto !important;
             }
 
             #page-1-signatures {
-                margin-top: 2mm !important;
+                margin-top: 0 !important;
                 flex: 0 0 auto !important;
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                align-items: end !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            #page-1-signatures > div {
+                width: auto !important;
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
             }
 
             #page-1-signatures .h-5 {
-                height: 3mm !important;
+                height: 1mm !important;
             }
 
             #page-2-signatures {
-                margin-top: 3mm !important;
+                margin-top: 1mm !important;
                 flex: 0 0 auto !important;
+                display: grid !important;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                align-items: end !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            #page-2-signatures > div {
+                width: auto !important;
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
             }
 
             #page-2-signatures .h-5 {
-                height: 3mm !important;
+                height: 1mm !important;
             }
         }
         
