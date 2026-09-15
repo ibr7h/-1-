@@ -1,4 +1,5 @@
-const CACHE_NAME = 'abu-sula-operational-plan-v1';
+const CACHE_NAME = 'abu-sula-operational-plan-v2';
+
 const APP_SHELL = [
   './',
   './index.html',
@@ -9,39 +10,54 @@ const APP_SHELL = [
   './icons/apple-touch-icon.png'
 ];
 
+// These are optional runtime dependencies used by the current page.
+// We try to warm them during installation, but a temporary network failure
+// must never prevent the PWA itself from installing.
+const OPTIONAL_REMOTE = [
+  'https://cdn.tailwindcss.com/3.4.17',
+  'https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap'
+];
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await cache.addAll(APP_SHELL);
+    await Promise.allSettled(
+      OPTIONAL_REMOTE.map((url) => cache.add(new Request(url, { mode: 'cors' })))
+    );
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      ))
-      .then(() => self.clients.claim())
-  );
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+    );
+    await self.clients.claim();
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
 
-  // Navigation: prefer fresh HTML, then fall back to the installed app shell.
+  // HTML navigation: network first so updates appear quickly; offline fallback
+  // always opens the installed application shell.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put('./index.html', copy));
-          return response;
-        })
-        .catch(() => caches.match('./index.html'))
-    );
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put('./index.html', response.clone());
+        }
+        return response;
+      } catch (_) {
+        return (await caches.match(request)) || (await caches.match('./index.html'));
+      }
+    })());
     return;
   }
 
@@ -49,26 +65,33 @@ self.addEventListener('fetch', (event) => {
   const isSameOrigin = url.origin === self.location.origin;
 
   if (isSameOrigin) {
-    // Local resources: cache first for instant/offline startup.
-    event.respondWith(
-      caches.match(request).then((cached) => cached || fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      }))
-    );
+    // Local app assets: cache first.
+    event.respondWith((async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      const response = await fetch(request);
+      if (response && response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      }
+      return response;
+    })());
     return;
   }
 
-  // CDN/fonts: stale-while-revalidate. After the first online visit these can work offline.
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const network = fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+  // Remote CSS/JS/font assets: stale-while-revalidate.
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    const networkPromise = fetch(request)
+      .then(async (response) => {
+        if (response) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put(request, response.clone());
+        }
         return response;
-      }).catch(() => cached);
-      return cached || network;
-    })
-  );
+      })
+      .catch(() => null);
+
+    return cached || (await networkPromise) || new Response('', { status: 504 });
+  })());
 });
