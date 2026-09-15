@@ -1,4 +1,4 @@
-name: Native A4 print correction
+name: Reduce print spacing
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Apply native A4 and direct-print patch
-        run: python3 scripts/mobile_print_patch.py
+      - name: Reduce gap before mid-year vacation bar
+        run: python3 scripts/spacing_patch.py
 
-      - name: Commit print correction
+      - name: Commit spacing correction
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Restore 100 percent A4 printing and prevent automatic print blocking'
+          git commit -m 'Reduce table-to-midyear-vacation gap to 2-3 lines'
           git push origin HEAD:main
