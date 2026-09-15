@@ -1,57 +1,133 @@
 from pathlib import Path
-import re
 
 INDEX = Path('operational-plan-pwa/index.html')
 SW = Path('operational-plan-pwa/sw.js')
 
 s = INDEX.read_text(encoding='utf-8')
 
-# iOS Safari reserves part of the physical A4 sheet for its own print footer
-# (URL/date/page number). A 297 mm CSS page can therefore spill by a small
-# amount and create an extra blank physical sheet. Keep desktop unchanged and
-# shorten only the app's page box when printing from iPhone/iPad.
-ios_css = '''
-
-        /* iPhone/iPad print pagination correction only. */
-        @media print {
-            body.ios-print .page-container {
-                height: 270mm !important;
-                min-height: 270mm !important;
-                max-height: 270mm !important;
+# Restore the desktop print signature area to its pre-compaction layout.
+# Keep the iPhone/iPad pagination fix, but scope the compact signature styling
+# to iOS only and add enough vertical separation to prevent the final lines
+# from visually overlapping.
+compact_block = '''            #page-1-signatures .h-5 {
+                height: 0 !important;
+                min-height: 0 !important;
+                margin: 0 !important;
             }
-        }
+
+            #midyear-vacation-bar {
+                padding-top: 0.6mm !important;
+                padding-bottom: 0.6mm !important;
+                line-height: 1.05 !important;
+                min-height: 0 !important;
+            }
+
+            #page-1-signatures {
+                padding-top: 0.6mm !important;
+                padding-bottom: 0 !important;
+                line-height: 1.02 !important;
+                min-height: 0 !important;
+                height: auto !important;
+                align-items: start !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
+
+            #page-1-signatures > div {
+                min-height: 0 !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin: 0 !important;
+            }
+
+            #page-1-signatures p {
+                margin-top: 0 !important;
+                margin-bottom: 0 !important;
+                line-height: 1.02 !important;
+            }
+
+            #page-1-signatures > div > p:first-child {
+                font-size: 9.5px !important;
+            }
+
+            #page-1-signatures > div > p:nth-child(2) {
+                font-size: 10.5px !important;
+                margin-top: 0.3mm !important;
+            }
+
+            #page-1-signatures > div > p:last-child {
+                font-size: 8px !important;
+                margin-top: 0.4mm !important;
+            }
 '''
 
-if 'body.ios-print .page-container' not in s:
-    style_marker = '    </style>'
-    if style_marker not in s:
-        raise SystemExit('Style closing marker not found; refusing unsafe edit.')
-    s = s.replace(style_marker, ios_css + '\n' + style_marker, 1)
+replacement = '''            #page-1-signatures .h-5 {
+                height: 1mm !important;
+            }
 
-# Add the iOS print class synchronously immediately before window.print().
-# This preserves the user gesture and avoids the automatic-print blocking that
-# appeared when printing was delayed with timers/animation frames.
-if "document.body.classList.toggle('ios-print', isIOSPrint);" not in s:
-    pattern = re.compile(r'(?m)^(\s*)window\.print\(\);\s*$')
+            /* iPhone/iPad only: preserve the two-page layout while giving
+               the final signature lines enough breathing room. */
+            body.ios-print #midyear-vacation-bar {
+                padding-top: 0.8mm !important;
+                padding-bottom: 0.8mm !important;
+                line-height: 1.10 !important;
+                min-height: 0 !important;
+            }
 
-    def repl(match):
-        indent = match.group(1)
-        return (
-            f"{indent}const isIOSPrint = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||\n"
-            f"{indent}    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);\n"
-            f"{indent}document.body.classList.toggle('ios-print', isIOSPrint);\n"
-            f"{indent}window.print();"
-        )
+            body.ios-print #page-1-signatures {
+                padding-top: 1mm !important;
+                padding-bottom: 0 !important;
+                line-height: 1.16 !important;
+                min-height: 0 !important;
+                height: auto !important;
+                align-items: start !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+            }
 
-    s, count = pattern.subn(repl, s)
-    if count != 2:
-        raise SystemExit(f'Expected 2 direct window.print calls, found {count}; refusing unsafe edit.')
+            body.ios-print #page-1-signatures > div {
+                min-height: 0 !important;
+                padding-top: 0 !important;
+                padding-bottom: 0 !important;
+                margin: 0 !important;
+            }
 
+            body.ios-print #page-1-signatures .h-5 {
+                height: 1.3mm !important;
+                min-height: 1.3mm !important;
+                margin: 0 !important;
+            }
+
+            body.ios-print #page-1-signatures p {
+                margin-bottom: 0 !important;
+                line-height: 1.16 !important;
+            }
+
+            body.ios-print #page-1-signatures > div > p:first-child {
+                font-size: 9.5px !important;
+                margin-top: 0 !important;
+            }
+
+            body.ios-print #page-1-signatures > div > p:nth-child(2) {
+                font-size: 10.5px !important;
+                margin-top: 0.7mm !important;
+            }
+
+            body.ios-print #page-1-signatures > div > p:last-child {
+                font-size: 8.5px !important;
+                margin-top: 0.9mm !important;
+            }
+'''
+
+if compact_block not in s:
+    raise SystemExit('Expected compact signature block not found; refusing unsafe edit.')
+
+s = s.replace(compact_block, replacement, 1)
 INDEX.write_text(s, encoding='utf-8')
 
-# Refresh the installed PWA cache so iPhones receive this mobile-only fix.
+# Refresh the installed PWA cache so iPhones receive this revision.
 t = SW.read_text(encoding='utf-8')
-t = t.replace('abu-sula-operational-plan-v14', 'abu-sula-operational-plan-v15')
+t = t.replace('abu-sula-operational-plan-v15', 'abu-sula-operational-plan-v16')
 SW.write_text(t, encoding='utf-8')
 
-print('Applied iOS-only 270 mm print page box; desktop A4 layout unchanged.')
+print('Restored desktop signature layout and increased iOS signature line spacing.')
