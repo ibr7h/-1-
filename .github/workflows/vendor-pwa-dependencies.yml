@@ -1,4 +1,4 @@
-name: Anchor first-page footer below table
+name: Roll back broken print footer layout
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Anchor vacation and signatures below schedule table
+      - name: Restore non-overlapping print layout
         run: python3 scripts/spacing_patch.py
 
-      - name: Commit anchored print footer
+      - name: Commit rollback
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Anchor first-page footer directly below schedule table'
+          git commit -m 'Rollback broken anchored print footer layout'
           git push origin HEAD:main
