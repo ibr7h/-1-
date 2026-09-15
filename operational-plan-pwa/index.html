@@ -272,22 +272,22 @@
             }
 
             #page-1-signatures .h-5 {
-                height: 0 !important;
-                min-height: 0 !important;
-                margin: 0 !important;
+                height: 1mm !important;
             }
 
-            #midyear-vacation-bar {
-                padding-top: 0.6mm !important;
-                padding-bottom: 0.6mm !important;
-                line-height: 1.05 !important;
+            /* iPhone/iPad only: preserve the two-page layout while giving
+               the final signature lines enough breathing room. */
+            body.ios-print #midyear-vacation-bar {
+                padding-top: 0.8mm !important;
+                padding-bottom: 0.8mm !important;
+                line-height: 1.10 !important;
                 min-height: 0 !important;
             }
 
-            #page-1-signatures {
-                padding-top: 0.6mm !important;
+            body.ios-print #page-1-signatures {
+                padding-top: 1mm !important;
                 padding-bottom: 0 !important;
-                line-height: 1.02 !important;
+                line-height: 1.16 !important;
                 min-height: 0 !important;
                 height: auto !important;
                 align-items: start !important;
@@ -295,31 +295,37 @@
                 page-break-inside: avoid !important;
             }
 
-            #page-1-signatures > div {
+            body.ios-print #page-1-signatures > div {
                 min-height: 0 !important;
                 padding-top: 0 !important;
                 padding-bottom: 0 !important;
                 margin: 0 !important;
             }
 
-            #page-1-signatures p {
-                margin-top: 0 !important;
+            body.ios-print #page-1-signatures .h-5 {
+                height: 1.3mm !important;
+                min-height: 1.3mm !important;
+                margin: 0 !important;
+            }
+
+            body.ios-print #page-1-signatures p {
                 margin-bottom: 0 !important;
-                line-height: 1.02 !important;
+                line-height: 1.16 !important;
             }
 
-            #page-1-signatures > div > p:first-child {
+            body.ios-print #page-1-signatures > div > p:first-child {
                 font-size: 9.5px !important;
+                margin-top: 0 !important;
             }
 
-            #page-1-signatures > div > p:nth-child(2) {
+            body.ios-print #page-1-signatures > div > p:nth-child(2) {
                 font-size: 10.5px !important;
-                margin-top: 0.3mm !important;
+                margin-top: 0.7mm !important;
             }
 
-            #page-1-signatures > div > p:last-child {
-                font-size: 8px !important;
-                margin-top: 0.4mm !important;
+            body.ios-print #page-1-signatures > div > p:last-child {
+                font-size: 8.5px !important;
+                margin-top: 0.9mm !important;
             }
 
             #page-2-signatures {
