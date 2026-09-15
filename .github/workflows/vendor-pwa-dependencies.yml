@@ -1,4 +1,4 @@
-name: Reduce print spacing
+name: Compact print signatures
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Reduce gap before mid-year vacation bar
+      - name: Raise signatures and tighten page footer spacing
         run: python3 scripts/spacing_patch.py
 
-      - name: Commit spacing correction
+      - name: Commit print footer correction
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Reduce table-to-midyear-vacation gap to 2-3 lines'
+          git commit -m 'Keep signatures on A4 page and reduce footer spacing'
           git push origin HEAD:main
