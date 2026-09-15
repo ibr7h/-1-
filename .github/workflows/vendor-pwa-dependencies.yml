@@ -1,4 +1,4 @@
-name: Compact print signatures
+name: Raise midyear vacation section
 
 on:
   workflow_dispatch:
@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Raise signatures and tighten page footer spacing
+      - name: Raise midyear vacation section by six lines
         run: python3 scripts/spacing_patch.py
 
       - name: Commit print footer correction
@@ -32,5 +32,5 @@ jobs:
             echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Keep signatures on A4 page and reduce footer spacing'
+          git commit -m 'Raise midyear vacation section by six lines'
           git push origin HEAD:main
