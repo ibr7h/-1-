@@ -243,26 +243,7 @@
 
             .official-calendar-qr img {
                 object-fit: contain !important;
-            }
-
-            /* Mobile print: desktop stays 100%; phones/tablets use 78%. */
-            body.mobile-print-fit,
-            body.mobile-print-fit #multi-page-container {
-                width: 210mm !important;
-                min-width: 210mm !important;
-                max-width: 210mm !important;
-                margin: 0 auto !important;
-                padding: 0 !important;
-            }
-
-            body.mobile-print-fit .page-container {
-                zoom: 0.78 !important;
-                transform: none !important;
-                transform-origin: top center !important;
-                margin-left: auto !important;
-                margin-right: auto !important;
-            }
-        }
+            }        }
         
         .week-table th, .week-table td {
             padding: 2.8px 3px !important;
@@ -1514,21 +1495,10 @@
             saveToLocalStorage();
         }
 
-        function isMobilePrintDevice() {
-            const ua = navigator.userAgent || '';
-            const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            return isIOS || /Android|Mobile/i.test(ua);
-        }
-
-        function applyPrintDeviceProfile() {
-            document.body.classList.toggle('mobile-print-fit', isMobilePrintDevice());
-        }
-
         // ============================================
         // تصدير PDF آمن: كل صفحة A4 تُجهّز منفصلة ثم تُجمع
         // ============================================
-        async function exportToPDF() {
+        function exportToPDF() {
             const range = document.getElementById('print-page-range').value;
             const previousTitle = document.title;
             const previousClasses = document.body.className;
@@ -1544,42 +1514,19 @@
                 document.title = 'النظام_التشغيلي_الفترتان_1448';
             }
 
-            applyPrintDeviceProfile();
-
-            // انتظر خط Cairo والصور قبل أن يفتح محرك PDF الأصلي للمتصفح.
-            try {
-                if (document.fonts && document.fonts.ready) {
-                    await document.fonts.ready;
-                }
-            } catch (_) {}
-
-            const images = Array.from(document.querySelectorAll('#multi-page-container img'));
-            await Promise.all(images.map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => {
-                    const done = () => resolve();
-                    img.addEventListener('load', done, { once: true });
-                    img.addEventListener('error', done, { once: true });
-                    setTimeout(done, 1800);
-                });
-            }));
-
             const restore = () => {
                 document.body.className = previousClasses;
                 document.title = previousTitle;
+                refreshInteractiveView();
             };
 
             window.addEventListener('afterprint', restore, { once: true });
 
-            // نافذة الطباعة الأصلية هي المسار الأكثر دقة للعربية.
-            // اختر "حفظ كملف PDF" / "Save as PDF" من النافذة.
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    setTimeout(() => window.print(), 80);
-                });
-            });
+            // IMPORTANT: keep this call synchronous and directly connected to
+            // the user's click. Delaying it can trigger browser print blocking.
+            window.print();
 
-            // احتياط للمتصفحات التي لا تطلق afterprint عند إلغاء النافذة.
+            // Fallback for browsers that do not fire afterprint after cancellation.
             setTimeout(() => {
                 if (document.title !== previousTitle) restore();
             }, 120000);
@@ -1624,23 +1571,20 @@
                 refreshInteractiveView();
             }
 
-            applyPrintDeviceProfile();
-
             const restore = () => {
                 document.body.className = previousClasses;
                 refreshInteractiveView();
             };
 
             window.addEventListener('afterprint', restore, { once: true });
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => setTimeout(() => window.print(), 80));
-            });
 
-            // Fallback for browsers that do not fire afterprint when print is cancelled.
+            // Must remain synchronous to preserve the browser's user activation.
+            window.print();
+
             setTimeout(() => {
-                if (document.body.classList.contains('mobile-print-fit') ||
-                    document.body.classList.contains('print-only-p1') ||
-                    document.body.classList.contains('print-only-p2')) {
+                if (document.body.classList.contains('print-only-p1') ||
+                    document.body.classList.contains('print-only-p2') ||
+                    document.body.classList.contains('mode-office')) {
                     restore();
                 }
             }, 120000);
