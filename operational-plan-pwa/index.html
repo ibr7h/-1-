@@ -243,7 +243,23 @@
 
             .official-calendar-qr img {
                 object-fit: contain !important;
-            }        }
+            }
+
+            /* تقليل الفراغ بين نهاية الجدول وشريط إجازة منتصف العام. */
+            #page-1 {
+                justify-content: flex-start !important;
+            }
+
+            #midyear-vacation-bar {
+                margin-top: 8mm !important;
+                flex: 0 0 auto !important;
+            }
+
+            #page-1-signatures {
+                margin-top: auto !important;
+                flex: 0 0 auto !important;
+            }
+        }
         
         .week-table th, .week-table td {
             padding: 2.8px 3px !important;
@@ -690,13 +706,13 @@
             </div>
 
             <!-- شريط إجازة منتصف العام الدراسي -->
-            <div class="border border-slate-400 rounded-md bg-slate-50 p-1.5 text-center text-[10.5px] shadow-sm">
+            <div id="midyear-vacation-bar" class="border border-slate-400 rounded-md bg-slate-50 p-1.5 text-center text-[10.5px] shadow-sm">
                 <span class="font-extrabold text-slate-900">إجازة منتصف العام الدراسي:</span>
                 <span class="text-slate-700 mr-1.5">تبدأ: <strong id="midyear-start-text" class="text-slate-900 font-black">الجمعة 1448/07/30 هـ</strong> | تنتهي: <strong id="midyear-end-text" class="text-slate-900 font-black">السبت 1448/08/08 هـ</strong> | بداية الفترة الثانية: <strong id="midyear-return-text" class="text-emerald-800 font-black">الأحد 1448/08/09 هـ</strong></span>
             </div>
 
             <!-- قسم التوقيعات (صفحة 1) -->
-            <div class="pt-1.5 border-t-2 border-slate-800 flex justify-between items-end text-center text-[11.5px] px-2">
+            <div id="page-1-signatures" class="pt-1.5 border-t-2 border-slate-800 flex justify-between items-end text-center text-[11.5px] px-2">
                 <div class="w-1/3 editable-zone">
                     <p class="font-bold text-slate-900">مدير المدرسة</p>
                     <p class="text-slate-900 font-black mt-0.5 text-[12.5px]">محمد حسن أبو طالب</p>
