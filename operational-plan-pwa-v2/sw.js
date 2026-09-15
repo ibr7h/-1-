@@ -1,4 +1,4 @@
-const CACHE = 'operational-plan-pwa-v2-shell-5';
+const CACHE = 'operational-plan-pwa-v2-shell-6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './setup-wizard.css',
   './editor.css',
   './db.js',
+  './academic-calendar.js',
   './setup-wizard.js',
   './editor.js',
   './print-adapter.js',

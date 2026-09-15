@@ -58,12 +58,13 @@
     if (!weeks.length) {
       for (let i = 0; i < targetCount; i += 1) {
         const startDate = plan.startDate ? addDays(plan.startDate, i * 7) : null;
-        const endDate = startDate ? addDays(startDate, 6) : null;
+        const endDate = startDate ? addDays(startDate, 4) : null;
         await PlanDB.put('weeks', {
           id: PlanDB.id('week'),
           schoolId: plan.schoolId,
           planId: plan.id,
           number: i + 1,
+          weekNumber: i + 1,
           title: `الأسبوع ${i + 1}`,
           startDate,
           endDate,
@@ -76,7 +77,15 @@
       weeks = await PlanDB.getByIndex('weeks', 'planId', plan.id);
     }
 
-    weeks.sort((a, b) => Number(a.number || 0) - Number(b.number || 0));
+    for (let index = 0; index < weeks.length; index += 1) {
+      const week = weeks[index];
+      const normalizedNumber = Number(week.number ?? week.weekNumber ?? index + 1);
+      let changed = false;
+      if (Number(week.number || 0) !== normalizedNumber) { week.number = normalizedNumber; changed = true; }
+      if (Number(week.weekNumber || 0) !== normalizedNumber) { week.weekNumber = normalizedNumber; changed = true; }
+      if (changed) await PlanDB.put('weeks', week);
+    }
+    weeks.sort((a, b) => Number(a.number ?? a.weekNumber ?? 0) - Number(b.number ?? b.weekNumber ?? 0));
     return weeks;
   }
 
@@ -195,7 +204,7 @@
         <form method="dialog" class="modal-card">
           <div class="modal-head">
             <div><span class="eyebrow">التقويم المدرسي</span><h2>${event ? 'تعديل حدث' : 'إضافة إجازة أو مناسبة'}</h2></div>
-            <button class="icon-button" value="cancel" type="submit">×</button>
+            <button class="icon-button" type="button" data-cancel-event aria-label="إلغاء">×</button>
           </div>
           <input type="hidden" id="editorEventId" value="${esc(event?.id || '')}">
           <div class="form-grid">
@@ -212,7 +221,7 @@
           </div>
           <div class="modal-actions">
             ${event ? '<button type="button" class="danger-button" data-delete-event>حذف</button>' : ''}
-            <button class="secondary-button" value="cancel" type="submit">إلغاء</button>
+            <button class="secondary-button" type="button" data-cancel-event>إلغاء</button>
             <button class="primary-button" type="button" data-save-event>حفظ</button>
           </div>
         </form>
@@ -226,6 +235,10 @@
     document.body.insertAdjacentHTML('beforeend', eventDialogMarkup({ event, plans, defaultPlanId, suggestedStart }));
     const dialog = $('#editorEventDialog');
     dialog.showModal();
+
+    $$('[data-cancel-event]', dialog).forEach(button => button.addEventListener('click', () => {
+      dialog.close('cancel');
+    }));
 
     $('[data-save-event]', dialog).addEventListener('click', async () => {
       const title = $('#editorEventTitle', dialog).value.trim();
