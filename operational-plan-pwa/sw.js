@@ -1,4 +1,4 @@
-const CACHE_NAME = 'abu-sula-operational-plan-v11';
+const CACHE_NAME = 'abu-sula-operational-plan-v12';
 
 const APP_SHELL = [
   './',
