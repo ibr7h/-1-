@@ -16,7 +16,7 @@
     <link rel="manifest" href="./manifest.webmanifest">
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="./tailwind-play.js"></script>
     <link rel="stylesheet" href="./cairo-local.css">
     
     <!-- PDF يعتمد على طباعة المتصفح الأصلية للحفاظ على تشكيل العربية وتنسيق A4 -->
@@ -243,6 +243,24 @@
 
             .official-calendar-qr img {
                 object-fit: contain !important;
+            }
+
+            /* Mobile print: desktop stays 100%; phones/tablets use 78%. */
+            body.mobile-print-fit,
+            body.mobile-print-fit #multi-page-container {
+                width: 210mm !important;
+                min-width: 210mm !important;
+                max-width: 210mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+            }
+
+            body.mobile-print-fit .page-container {
+                zoom: 0.78 !important;
+                transform: none !important;
+                transform-origin: top center !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
             }
         }
         
@@ -1496,6 +1514,17 @@
             saveToLocalStorage();
         }
 
+        function isMobilePrintDevice() {
+            const ua = navigator.userAgent || '';
+            const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            return isIOS || /Android|Mobile/i.test(ua);
+        }
+
+        function applyPrintDeviceProfile() {
+            document.body.classList.toggle('mobile-print-fit', isMobilePrintDevice());
+        }
+
         // ============================================
         // تصدير PDF آمن: كل صفحة A4 تُجهّز منفصلة ثم تُجمع
         // ============================================
@@ -1514,6 +1543,8 @@
             } else {
                 document.title = 'النظام_التشغيلي_الفترتان_1448';
             }
+
+            applyPrintDeviceProfile();
 
             // انتظر خط Cairo والصور قبل أن يفتح محرك PDF الأصلي للمتصفح.
             try {
@@ -1575,7 +1606,8 @@
         // تنفيذ الطباعة المحددة
         function executePrint(mode) {
             const printRange = document.getElementById('print-page-range').value;
-            
+            const previousClasses = document.body.className;
+
             document.body.classList.remove('print-only-p1', 'print-only-p2');
             if (printRange === 'p1') {
                 document.body.classList.add('print-only-p1');
@@ -1592,13 +1624,26 @@
                 refreshInteractiveView();
             }
 
-            window.print();
+            applyPrintDeviceProfile();
 
-            setTimeout(() => {
-                document.body.classList.remove('print-only-p1', 'print-only-p2', 'mode-office');
-                document.body.classList.add('mode-interactive');
+            const restore = () => {
+                document.body.className = previousClasses;
                 refreshInteractiveView();
-            }, 600);
+            };
+
+            window.addEventListener('afterprint', restore, { once: true });
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => setTimeout(() => window.print(), 80));
+            });
+
+            // Fallback for browsers that do not fire afterprint when print is cancelled.
+            setTimeout(() => {
+                if (document.body.classList.contains('mobile-print-fit') ||
+                    document.body.classList.contains('print-only-p1') ||
+                    document.body.classList.contains('print-only-p2')) {
+                    restore();
+                }
+            }, 120000);
         }
 
         // تمييز الأسبوع الحالي وتاريخ اليوم
