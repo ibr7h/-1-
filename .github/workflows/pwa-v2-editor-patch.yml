@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add operational-plan-pwa-v2/app.js operational-plan-pwa-v2/index.html operational-plan-pwa-v2/sw.js .github/workflows/pwa-v2-check.yml
+          git add operational-plan-pwa-v2/app.js operational-plan-pwa-v2/index.html operational-plan-pwa-v2/sw.js
           if git diff --cached --quiet; then
             echo 'No changes needed.'
             exit 0
