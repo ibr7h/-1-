@@ -1,6 +1,11 @@
-/* Cairo is loaded online on the first visit and then cached by the service worker.
-   System fallbacks keep the app usable if the font has not yet been fetched. */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap');
+/* Cairo — local copy from the official Google Fonts repository. */
+@font-face {
+  font-family: 'Cairo';
+  src: url('./Cairo.ttf') format('truetype');
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   font-family: 'Cairo', Tahoma, Arial, sans-serif;
