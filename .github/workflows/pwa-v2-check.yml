@@ -6,6 +6,7 @@ on:
       - pwa-v2
     paths:
       - 'operational-plan-pwa-v2/**'
+      - 'operational-plan-pwa/print-bridge-v2.js'
       - '.github/workflows/pwa-v2-check.yml'
   workflow_dispatch:
 
@@ -25,7 +26,9 @@ jobs:
           node --check operational-plan-pwa-v2/app.js
           node --check operational-plan-pwa-v2/editor.js
           node --check operational-plan-pwa-v2/setup-wizard.js
+          node --check operational-plan-pwa-v2/print-adapter.js
           node --check operational-plan-pwa-v2/sw.js
+          node --check operational-plan-pwa/print-bridge-v2.js
 
       - name: Validate manifest JSON
         run: python3 -m json.tool operational-plan-pwa-v2/manifest.webmanifest > /dev/null
@@ -39,6 +42,8 @@ jobs:
           test -f operational-plan-pwa-v2/app.js
           test -f operational-plan-pwa-v2/editor.js
           test -f operational-plan-pwa-v2/setup-wizard.js
+          test -f operational-plan-pwa-v2/print-adapter.js
           test -f operational-plan-pwa-v2/db.js
           test -f operational-plan-pwa-v2/sw.js
           test -f operational-plan-pwa-v2/manifest.webmanifest
+          test -f operational-plan-pwa/print-bridge-v2.js
