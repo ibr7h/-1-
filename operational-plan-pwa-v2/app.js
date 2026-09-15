@@ -196,7 +196,7 @@
   async function installOfficialPlan() {
     if (!state.activeSchool) { toast('اختر مدرسة أولًا'); return; }
     if (!window.OperationalAcademicCalendar) { toast('التقويم الرسمي غير متاح'); return; }
-    const accepted = confirm('اعتماد التقويم الرسمي 1448–1449هـ لهذه المدرسة؟\nسيتم ضبط الفترتين على 19 أسبوعًا دراسيًا لكل فترة وإضافة المواعيد الرسمية الثابتة. ستبقى ملاحظات ومحتوى الأسابيع الحالية قدر الإمكان.');
+    const accepted = confirm('اعتماد التقويم الرسمي 1448–1449هـ لهذه المدرسة؟\nسيتم ضبط الفترة الأولى على 19 أسبوعًا والفترة الثانية على 18 أسبوعًا، وإضافة المواعيد الثابتة وإجازات جازان الإضافية. ستبقى ملاحظات ومحتوى الأسابيع الحالية قدر الإمكان.');
     if (!accepted) return;
     try {
       await window.OperationalAcademicCalendar.installForSchool(state.activeSchool, state.plans);
@@ -204,7 +204,7 @@
       state.view = 'plans';
       renderChrome();
       renderView();
-      toast('تم اعتماد خطة 1448–1449هـ: 38 أسبوعًا دراسيًا');
+      toast('تم اعتماد خطة 1448–1449هـ: 37 أسبوعًا تشغيليًا (19 + 18)');
     } catch (error) {
       toast(error.message || 'تعذر اعتماد التقويم الرسمي');
     }
