@@ -11,6 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="../operational-plan-pwa/icons/apple-touch-icon.png" />
   <link rel="stylesheet" href="./app.css" />
+  <link rel="stylesheet" href="./setup-wizard.css" />
 </head>
 <body>
   <div id="app" class="app-shell">
@@ -77,10 +78,10 @@
       </div>
       <input type="hidden" id="schoolId" />
       <div class="form-grid">
-        <label class="field full"><span>اسم المدرسة</span><input id="schoolName" required placeholder="مثال: مجمع أبو السلع الابتدائي والمتوسط" /></label>
-        <label class="field"><span>الاسم المختصر</span><input id="schoolShortName" placeholder="مثال: مجمع أبو السلع" /></label>
+        <label class="field full"><span>اسم المدرسة</span><input id="schoolName" required placeholder="مثال: مدرسة النور المتوسطة" /></label>
+        <label class="field"><span>الاسم المختصر</span><input id="schoolShortName" placeholder="مثال: النور المتوسطة" /></label>
         <label class="field"><span>نوع المدرسة</span><select id="schoolType"><option value="complex">مجمع</option><option value="primary">ابتدائي</option><option value="middle">متوسط</option><option value="secondary">ثانوي</option><option value="other">أخرى</option></select></label>
-        <label class="field"><span>المنطقة التعليمية</span><input id="schoolRegion" placeholder="جازان" /></label>
+        <label class="field"><span>المنطقة التعليمية</span><input id="schoolRegion" placeholder="مثال: جازان" /></label>
         <label class="field"><span>الإدارة / المكتب</span><input id="schoolOffice" placeholder="اختياري" /></label>
       </div>
       <div class="modal-actions">
@@ -113,6 +114,7 @@
   <input id="backupFile" type="file" accept="application/json,.json" hidden />
 
   <script src="./db.js"></script>
+  <script src="./setup-wizard.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>
