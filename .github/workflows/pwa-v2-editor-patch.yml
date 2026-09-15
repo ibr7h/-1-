@@ -1,0 +1,42 @@
+name: Integrate PWA v2 editor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pwa-v2
+    paths:
+      - '.github/workflows/pwa-v2-editor-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Integrate editor and calendar manager
+        run: python3 scripts/pwa_v2_editor_patch.py
+
+      - name: Validate JavaScript before commit
+        run: |
+          node --check operational-plan-pwa-v2/editor.js
+          node --check operational-plan-pwa-v2/app.js
+          node --check operational-plan-pwa-v2/sw.js
+
+      - name: Commit editor integration
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add operational-plan-pwa-v2/app.js operational-plan-pwa-v2/index.html operational-plan-pwa-v2/sw.js .github/workflows/pwa-v2-check.yml
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git commit -m 'Integrate week editor and calendar manager'
+          git push origin HEAD:pwa-v2
