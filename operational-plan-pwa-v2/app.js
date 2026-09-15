@@ -138,7 +138,7 @@
 
   function printView() {
     return `${pageHead('الطباعة','محرك الطباعة المعتمد مستقل عن واجهة الإدارة')}
-      <article class="card print-preview-card"><div class="paper-preview"><div></div><div></div>${'<div></div>'.repeat(14)}</div><div><span class="badge">Print Engine v1 — ثابت</span><h3 style="font-size:20px;margin:10px 0 6px">القالب الرسمي المعتمد</h3><p style="color:var(--muted);font-size:12px">لن نغيّر قياسات A4 أو إعدادات طباعة الكمبيوتر والآيفون من واجهة v2. الربط الكامل لبيانات المدرسة النشطة بالقالب سيكون في المرحلة التالية.</p><div class="card-actions" style="margin-top:16px"><button class="primary-button" data-action="launch-print">فتح قالب الطباعة الحالي</button></div></div></article>`;
+      <article class="card print-preview-card"><div class="paper-preview"><div></div><div></div>${'<div></div>'.repeat(14)}</div><div><span class="badge">Print Engine v1 — ثابت</span><h3 style="font-size:20px;margin:10px 0 6px">القالب الرسمي المعتمد</h3><p style="color:var(--muted);font-size:12px">يتم تمرير بيانات المدرسة والخطط والأسابيع والإجازات والمسؤولين إلى القالب الرسمي دون تغيير قياسات A4 أو تنسيق طباعة الكمبيوتر والآيفون.</p><div class="card-actions" style="margin-top:16px"><button class="primary-button" data-action="launch-print">فتح قالب الطباعة الحالي</button></div></div></article>`;
   }
 
   function settingsView() {
@@ -167,7 +167,11 @@
     if (action === 'backup') exportBackup();
     if (action === 'restore') $('backupFile').click();
     if (action === 'install') installApp();
-    if (action === 'launch-print') window.open('../operational-plan-pwa/index.html', '_blank', 'noopener');
+    if (action === 'launch-print') {
+      if (!window.PrintAdapter) { toast('محول الطباعة غير متاح'); return; }
+      window.PrintAdapter.openSchoolPrint(state.activeSchool, state.plans)
+        .catch(error => toast(error.message || 'تعذر تجهيز الطباعة'));
+    }
   }
 
   function openSchoolDialog(id = null) {
