@@ -348,6 +348,17 @@
             font-size: 10.5px !important;
             line-height: 1.28 !important;
         }
+
+
+        /* iPhone/iPad print pagination correction only. */
+        @media print {
+            body.ios-print .page-container {
+                height: 270mm !important;
+                min-height: 270mm !important;
+                max-height: 270mm !important;
+            }
+        }
+
     </style>
 </head>
 <body class="p-2 sm:p-4 mode-interactive">
@@ -1622,8 +1633,10 @@
 
             // IMPORTANT: keep this call synchronous and directly connected to
             // the user's click. Delaying it can trigger browser print blocking.
+            const isIOSPrint = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            document.body.classList.toggle('ios-print', isIOSPrint);
             window.print();
-
             // Fallback for browsers that do not fire afterprint after cancellation.
             setTimeout(() => {
                 if (document.title !== previousTitle) restore();
@@ -1677,8 +1690,10 @@
             window.addEventListener('afterprint', restore, { once: true });
 
             // Must remain synchronous to preserve the browser's user activation.
+            const isIOSPrint = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            document.body.classList.toggle('ios-print', isIOSPrint);
             window.print();
-
             setTimeout(() => {
                 if (document.body.classList.contains('print-only-p1') ||
                     document.body.classList.contains('print-only-p2') ||
