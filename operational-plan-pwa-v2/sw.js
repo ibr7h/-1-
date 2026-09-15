@@ -1,4 +1,4 @@
-const CACHE = 'operational-plan-pwa-v2-shell-6';
+const CACHE = 'operational-plan-pwa-v2-shell-7';
 const APP_SHELL = [
   './',
   './index.html',

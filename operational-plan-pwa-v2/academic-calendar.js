@@ -1,10 +1,14 @@
 (() => {
   const YEAR_LABEL = '1448–1449 هـ';
-  const CALENDAR_KEY = 'sa-general-1448-1449';
+  const CALENDAR_KEY = 'sa-general-1448-1449-jazan';
+  const DEFAULT_DAY_PATTERN = ['on', 'on', 'on', 'off', 'off'];
 
+  // الخطة التشغيلية المطبوعة تستخدم 19 أسبوعًا في الفترة الأولى
+  // و18 أسبوعًا في الفترة الثانية. إجازات الأسابيع الكاملة لا تُنشأ
+  // كأسبوع دراسي مستقل، بل تظهر كإجازة داخل قالب الطباعة الثابت.
   const periods = {
     '1': { term: '1', name: 'الخطة التشغيلية - الفترة الأولى', startDate: '2026-08-23', endDate: '2027-01-07', weeksCount: 19 },
-    '2': { term: '2', name: 'الخطة التشغيلية - الفترة الثانية', startDate: '2027-01-17', endDate: '2027-06-24', weeksCount: 19 }
+    '2': { term: '2', name: 'الخطة التشغيلية - الفترة الثانية', startDate: '2027-01-17', endDate: '2027-06-17', weeksCount: 18 }
   };
 
   const fixedEvents = [
@@ -12,13 +16,20 @@
     { key: 'teachers-return', title: 'عودة المعلمين الممارسين للتدريس', type: 'occasion', startDate: '2026-08-16', endDate: '2026-08-16', term: '1' },
     { key: 'year-start', title: 'بداية العام الدراسي', type: 'occasion', startDate: '2026-08-23', endDate: '2026-08-23', term: '1' },
     { key: 'national-day', title: 'إجازة اليوم الوطني', type: 'holiday', startDate: '2026-09-23', endDate: '2026-09-26', term: '1' },
+
+    // الإجازات الإضافية المعتمدة لتعليم جازان/بقية المناطق في 1448–1449هـ.
+    { key: 'extra-1', title: 'إجازة إضافية', type: 'holiday', startDate: '2026-10-25', endDate: '2026-10-25', term: '1', regional: true },
     { key: 'fall-break', title: 'إجازة الخريف', type: 'holiday', startDate: '2026-11-20', endDate: '2026-11-28', term: '1', fullWeekBreak: true },
+    { key: 'extra-2', title: 'إجازة إضافية', type: 'holiday', startDate: '2026-11-29', endDate: '2026-11-29', term: '1', regional: true },
+    { key: 'extra-3', title: 'إجازة إضافية', type: 'holiday', startDate: '2027-01-07', endDate: '2027-01-07', term: '1', regional: true },
     { key: 'midyear-break', title: 'إجازة منتصف العام الدراسي', type: 'holiday', startDate: '2027-01-08', endDate: '2027-01-16', term: '1' },
+
     { key: 'term2-start', title: 'بداية الفترة الثانية', type: 'occasion', startDate: '2027-01-17', endDate: '2027-01-17', term: '2' },
     { key: 'founding-day', title: 'إجازة يوم التأسيس', type: 'holiday', startDate: '2027-02-19', endDate: '2027-02-22', term: '2' },
     { key: 'eid-fitr', title: 'إجازة عيد الفطر', type: 'holiday', startDate: '2027-02-26', endDate: '2027-03-13', term: '2', fullWeekBreak: true },
+    { key: 'extra-4', title: 'إجازة إضافية', type: 'holiday', startDate: '2027-04-11', endDate: '2027-04-11', term: '2', regional: true },
     { key: 'eid-adha', title: 'إجازة عيد الأضحى', type: 'holiday', startDate: '2027-05-07', endDate: '2027-05-22', term: '2', fullWeekBreak: true },
-    { key: 'year-end', title: 'إجازة نهاية العام الدراسي', type: 'holiday', startDate: '2027-06-24', endDate: '2027-06-24', term: '2' }
+    { key: 'year-end', title: 'بداية إجازة نهاية العام الدراسي', type: 'holiday', startDate: '2027-06-24', endDate: '2027-06-24', term: '2' }
   ];
 
   function addDays(isoDate, days) {
@@ -38,7 +49,7 @@
     if (!period) return [];
     const result = [];
     let cursor = period.startDate;
-    while (cursor && cursor <= period.endDate) {
+    while (cursor && cursor <= period.endDate && result.length < period.weeksCount) {
       const schoolWeekEnd = addDays(cursor, 4);
       if (!fullyCoveredByBreak(cursor, schoolWeekEnd)) {
         result.push({
@@ -46,12 +57,13 @@
           weekNumber: result.length + 1,
           title: `الأسبوع ${result.length + 1}`,
           startDate: cursor,
-          endDate: schoolWeekEnd
+          endDate: schoolWeekEnd,
+          dayStatuses: [...DEFAULT_DAY_PATTERN]
         });
       }
       cursor = addDays(cursor, 7);
     }
-    return result.slice(0, period.weeksCount);
+    return result;
   }
 
   async function removeExtraWeeks(planId, keepIds) {
@@ -84,6 +96,12 @@
         content: old?.content || '',
         notes: old?.notes || '',
         status: old?.status || 'planned',
+        // النمط المعتمد في الخطة التشغيلية: الأحد–الثلاثاء ✓، الأربعاء–الخميس X.
+        // لا نحتفظ بحالة "كل الأيام ✓" التي كانت تنتج عن القالب القديم.
+        dayStatuses: old?.dayStatusesCustomized && Array.isArray(old.dayStatuses)
+          ? old.dayStatuses.slice(0, 5)
+          : [...DEFAULT_DAY_PATTERN],
+        dayStatusesCustomized: Boolean(old?.dayStatusesCustomized),
         createdAt: old?.createdAt || now,
         updatedAt: now
       };
@@ -143,7 +161,9 @@
         type: event.type,
         startDate: event.startDate,
         endDate: event.endDate,
-        notes: 'موعد رسمي ثابت للعام الدراسي 1448–1449هـ',
+        notes: event.regional
+          ? 'موعد إضافي معتمد لتعليم جازان/بقية المناطق للعام 1448–1449هـ'
+          : 'موعد ثابت للعام الدراسي 1448–1449هـ',
         official: true,
         officialKey: event.key,
         calendarKey: CALENDAR_KEY,
@@ -166,7 +186,8 @@
   window.OperationalAcademicCalendar = {
     key: CALENDAR_KEY,
     yearLabel: YEAR_LABEL,
-    totalInstructionalWeeks: 38,
+    totalInstructionalWeeks: 37,
+    dayPattern: [...DEFAULT_DAY_PATTERN],
     periods,
     fixedEvents: fixedEvents.map(item => ({ ...item })),
     instructionalWeeks,

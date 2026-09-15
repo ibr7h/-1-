@@ -68,6 +68,8 @@
           title: `الأسبوع ${i + 1}`,
           startDate,
           endDate,
+          dayStatuses: ['on', 'on', 'on', 'off', 'off'],
+          dayStatusesCustomized: false,
           content: '',
           notes: '',
           createdAt: new Date().toISOString(),
@@ -83,6 +85,11 @@
       let changed = false;
       if (Number(week.number || 0) !== normalizedNumber) { week.number = normalizedNumber; changed = true; }
       if (Number(week.weekNumber || 0) !== normalizedNumber) { week.weekNumber = normalizedNumber; changed = true; }
+      if (!Array.isArray(week.dayStatuses) || week.dayStatuses.length < 5) {
+        week.dayStatuses = ['on', 'on', 'on', 'off', 'off'];
+        week.dayStatusesCustomized = false;
+        changed = true;
+      }
       if (changed) await PlanDB.put('weeks', week);
     }
     weeks.sort((a, b) => Number(a.number ?? a.weekNumber ?? 0) - Number(b.number ?? b.weekNumber ?? 0));
