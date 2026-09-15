@@ -126,8 +126,8 @@
   }
 
   function plansView() {
-    const cards = state.plans.length ? state.plans.map(p => `<article class="plan-card"><span class="badge">${p.term === '2' ? 'الفترة الثانية' : 'الفترة الأولى'}</span><h3>${escapeHTML(p.name)}</h3><p>${escapeHTML(p.academicYear || '')} · ${Number(p.weeksCount || 0)} أسبوع</p><div class="card-actions"><button class="text-button" data-action="open-print">معاينة الطباعة</button><button class="text-button" data-editor-plan="${escapeHTML(p.id)}">تحرير الأسابيع</button></div></article>`).join('') : `<div class="empty-state"><div class="big-icon">▦</div><h3>لا توجد خطط لهذه المدرسة</h3><p>أنشئ أول خطة ثم سيظهر محرر الأسابيع هنا.</p><button class="primary-button" data-action="add-plan">إنشاء خطة</button></div>`;
-    return `${pageHead('الخطط', state.activeSchool ? `خطط ${escapeHTML(state.activeSchool.shortName || state.activeSchool.name)}` : 'اختر مدرسة أولًا', '<button class="primary-button" data-action="add-plan">＋ خطة جديدة</button>')}<div class="plan-grid">${cards}</div>`;
+    const cards = state.plans.length ? state.plans.map(p => `<article class="plan-card"><span class="badge">${p.term === '2' ? 'الفترة الثانية' : 'الفترة الأولى'}</span><h3>${escapeHTML(p.name)}</h3><p>${escapeHTML(p.academicYear || '')} · ${Number(p.weeksCount || 0)} أسبوع</p><div class="card-actions"><button class="text-button" data-action="open-print">معاينة الطباعة</button><button class="text-button" data-editor-plan="${escapeHTML(p.id)}">تحرير الأسابيع</button><button class="text-button" data-action="delete-plan" data-plan-id="${escapeHTML(p.id)}" style="color:#b91c1c">حذف الخطة</button></div></article>`).join('') : `<div class="empty-state"><div class="big-icon">▦</div><h3>لا توجد خطط لهذه المدرسة</h3><p>أنشئ أول خطة ثم سيظهر محرر الأسابيع هنا.</p><button class="primary-button" data-action="add-plan">إنشاء خطة</button></div>`;
+    return `${pageHead('الخطط', state.activeSchool ? `خطط ${escapeHTML(state.activeSchool.shortName || state.activeSchool.name)}` : 'اختر مدرسة أولًا', '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="secondary-button" data-action="install-official-plan">اعتماد تقويم 1448–1449</button><button class="primary-button" data-action="add-plan">＋ خطة جديدة</button></div>')}<div class="plan-grid">${cards}</div>`;
   }
 
   function calendarView() {
@@ -152,18 +152,20 @@
   }
 
   function bindViewActions() {
-    document.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', () => handleAction(btn.dataset.action)));
+    document.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', () => handleAction(btn.dataset.action, btn)));
     document.querySelectorAll('[data-set-school]').forEach(btn => btn.addEventListener('click', () => setActiveSchool(btn.dataset.setSchool)));
     document.querySelectorAll('[data-edit-school]').forEach(btn => btn.addEventListener('click', () => openSchoolDialog(btn.dataset.editSchool)));
     window.PlanEditor?.bindPlanButtons($('viewRoot'), state.activeSchool, state.plans);
   }
 
-  function handleAction(action) {
+  function handleAction(action, target = null) {
     if (action === 'open-plans') setView('plans');
     if (action === 'open-calendar') setView('calendar');
     if (action === 'open-print') setView('print');
     if (action === 'add-school') openSchoolDialog();
     if (action === 'add-plan') openPlanDialog();
+    if (action === 'delete-plan') deletePlan(target?.dataset.planId);
+    if (action === 'install-official-plan') installOfficialPlan();
     if (action === 'backup') exportBackup();
     if (action === 'restore') $('backupFile').click();
     if (action === 'install') installApp();
@@ -171,6 +173,40 @@
       if (!window.PrintAdapter) { toast('محول الطباعة غير متاح'); return; }
       window.PrintAdapter.openSchoolPrint(state.activeSchool, state.plans)
         .catch(error => toast(error.message || 'تعذر تجهيز الطباعة'));
+    }
+  }
+
+  async function deletePlan(planId) {
+    const plan = state.plans.find(item => item.id === planId);
+    if (!plan) return;
+    const accepted = confirm(`حذف «${plan.name}»؟\nسيتم حذف أسابيع الخطة والأحداث المرتبطة بها نهائيًا.`);
+    if (!accepted) return;
+
+    const [weeks, events] = await Promise.all([
+      PlanDB.getByIndex('weeks', 'planId', plan.id),
+      PlanDB.getByIndex('events', 'planId', plan.id)
+    ]);
+    for (const week of weeks) await PlanDB.remove('weeks', week.id);
+    for (const event of events) await PlanDB.remove('events', event.id);
+    await PlanDB.remove('plans', plan.id);
+    await refreshData();
+    toast('تم حذف الخطة وجميع البيانات المرتبطة بها');
+  }
+
+  async function installOfficialPlan() {
+    if (!state.activeSchool) { toast('اختر مدرسة أولًا'); return; }
+    if (!window.OperationalAcademicCalendar) { toast('التقويم الرسمي غير متاح'); return; }
+    const accepted = confirm('اعتماد التقويم الرسمي 1448–1449هـ لهذه المدرسة؟\nسيتم ضبط الفترتين على 19 أسبوعًا دراسيًا لكل فترة وإضافة المواعيد الرسمية الثابتة. ستبقى ملاحظات ومحتوى الأسابيع الحالية قدر الإمكان.');
+    if (!accepted) return;
+    try {
+      await window.OperationalAcademicCalendar.installForSchool(state.activeSchool, state.plans);
+      await refreshData();
+      state.view = 'plans';
+      renderChrome();
+      renderView();
+      toast('تم اعتماد خطة 1448–1449هـ: 38 أسبوعًا دراسيًا');
+    } catch (error) {
+      toast(error.message || 'تعذر اعتماد التقويم الرسمي');
     }
   }
 

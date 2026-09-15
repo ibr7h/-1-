@@ -155,7 +155,8 @@
       if (dayEvents.length) {
         row.innerHTML = `<td colspan="2" class="text-[9.5px] font-black text-amber-900 py-0.5">${dayEvents.map(e => e.title).filter(Boolean).join(' • ')}</td>`;
       } else {
-        row.innerHTML = `<td>${DAY_NAMES[dayIndex] || ''}</td><td class="font-bold text-emerald-700 clickable-status">✓</td>`;
+        // Preserve the approved operational-plan status already present in
+        // the frozen template (✓ / X). Do not replace all days with ✓.
       }
     });
   }
@@ -220,6 +221,16 @@
     });
   }
 
+  function specialHolidayForCard(card, events) {
+    const id = card.id || '';
+    const hint = id === 'vacation-card-p1' ? 'الخريف'
+      : id === 'vacation-card-eid1' ? 'الفطر'
+      : id === 'vacation-card-eid2' ? 'الأضحى'
+      : '';
+    if (!hint) return null;
+    return (events || []).find(event => event.type === 'holiday' && String(event.title || '').includes(hint)) || null;
+  }
+
   function applyPeriod(plan, period) {
     const cards = [...document.querySelectorAll(`.week-card[data-period="${period}"]`)]
       .sort((a, b) => Number(a.dataset.weekIndex || 0) - Number(b.dataset.weekIndex || 0));
@@ -231,15 +242,30 @@
 
     const weeks = [...(plan.weeks || [])].sort((a, b) => Number(a.number ?? a.weekNumber ?? 0) - Number(b.number ?? b.weekNumber ?? 0));
     const events = plan.events || [];
+    let instructionalIndex = 0;
+
     cards.forEach(card => {
-      const index = Number(card.dataset.weekIndex || 0);
-      const week = weeks[index];
+      if (!card.classList.contains('week-card-standard')) {
+        const holiday = specialHolidayForCard(card, events);
+        if (holiday) {
+          applySpecialCard(card, {
+            startDate: holiday.startDate,
+            endDate: holiday.endDate || holiday.startDate,
+            title: holiday.title
+          }, events, instructionalIndex);
+        } else {
+          clearCard(card);
+        }
+        return;
+      }
+
+      const week = weeks[instructionalIndex];
       if (!week) {
         clearCard(card);
         return;
       }
-      if (card.classList.contains('week-card-standard')) applyStandardCard(card, week, events, index);
-      else applySpecialCard(card, week, events, index);
+      applyStandardCard(card, week, events, instructionalIndex);
+      instructionalIndex += 1;
     });
   }
 
