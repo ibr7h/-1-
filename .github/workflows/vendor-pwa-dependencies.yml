@@ -1,4 +1,4 @@
-name: Vendor PWA dependencies
+name: Mobile A4 print fit
 
 on:
   workflow_dispatch:
@@ -12,67 +12,168 @@ permissions:
   contents: write
 
 jobs:
-  vendor:
+  patch:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download pinned Tailwind browser runtime
+      - name: Patch mobile print behavior
         run: |
           set -euo pipefail
-          curl -fL --retry 3 'https://cdn.tailwindcss.com/3.4.17' \
-            -o operational-plan-pwa/tailwind-play.js
+          python3 - <<'PY'
+          from pathlib import Path
 
-      - name: Download Cairo variable font and OFL license
-        run: |
-          set -euo pipefail
-          curl -fL --retry 3 \
-            'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf' \
-            -o operational-plan-pwa/Cairo.ttf
-          curl -fL --retry 3 \
-            'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/OFL.txt' \
-            -o operational-plan-pwa/CAIRO_OFL.txt
+          p = Path('operational-plan-pwa/index.html')
+          s = p.read_text(encoding='utf-8')
 
-      - name: Save Tailwind upstream license
-        run: |
-          set -euo pipefail
-          curl -fL --retry 3 \
-            'https://raw.githubusercontent.com/tailwindlabs/tailwindcss/v3.4.17/LICENSE' \
-            -o operational-plan-pwa/TAILWIND_LICENSE.txt
+          # Keep all runtime dependencies local/offline.
+          s = s.replace(
+              '<script src="https://cdn.tailwindcss.com/3.4.17"></script>',
+              '<script src="./tailwind-play.js"></script>'
+          )
 
-      - name: Configure Cairo as a local font
-        run: |
-          cat > operational-plan-pwa/cairo-local.css <<'EOF'
-          /* Cairo — local copy from the official Google Fonts repository. */
-          @font-face {
-            font-family: 'Cairo';
-            src: url('./Cairo.ttf') format('truetype');
-            font-weight: 200 1000;
-            font-style: normal;
-            font-display: swap;
-          }
+          if 'body.mobile-print-fit .page-container' not in s:
+              marker = """            .official-calendar-qr img {
+                object-fit: contain !important;
+            }
+        }
+"""
+              replacement = """            .official-calendar-qr img {
+                object-fit: contain !important;
+            }
 
-          :root {
-            font-family: 'Cairo', Tahoma, Arial, sans-serif;
-          }
-          EOF
+            /* Mobile print: keep desktop at 100%, fit phones/tablets at 78%. */
+            body.mobile-print-fit,
+            body.mobile-print-fit #multi-page-container {
+                width: 210mm !important;
+                min-width: 210mm !important;
+                max-width: 210mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+            }
 
-      - name: Commit vendored dependencies
+            body.mobile-print-fit .page-container {
+                zoom: 0.78 !important;
+                transform: none !important;
+                transform-origin: top center !important;
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+        }
+"""
+              if marker not in s:
+                  raise SystemExit('CSS insertion marker not found')
+              s = s.replace(marker, replacement, 1)
+
+          if 'function isMobilePrintDevice()' not in s:
+              marker = """        // ============================================
+        // تصدير PDF آمن: كل صفحة A4 تُجهّز منفصلة ثم تُجمع
+        // ============================================
+"""
+              helper = """        function isMobilePrintDevice() {
+            const ua = navigator.userAgent || '';
+            const isIOS = /iPhone|iPad|iPod/i.test(ua) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            return isIOS || /Android|Mobile/i.test(ua);
+        }
+
+        function applyPrintDeviceProfile() {
+            document.body.classList.toggle('mobile-print-fit', isMobilePrintDevice());
+        }
+
+        // ============================================
+        // تصدير PDF آمن: كل صفحة A4 تُجهّز منفصلة ثم تُجمع
+        // ============================================
+"""
+              if marker not in s:
+                  raise SystemExit('JS helper insertion marker not found')
+              s = s.replace(marker, helper, 1)
+
+          export_marker = """            } else {
+                document.title = 'النظام_التشغيلي_الفترتان_1448';
+            }
+
+            // انتظر خط Cairo والصور قبل أن يفتح محرك PDF الأصلي للمتصفح.
+"""
+          export_replacement = """            } else {
+                document.title = 'النظام_التشغيلي_الفترتان_1448';
+            }
+
+            applyPrintDeviceProfile();
+
+            // انتظر خط Cairo والصور قبل أن يفتح محرك PDF الأصلي للمتصفح.
+"""
+          if 'applyPrintDeviceProfile();\n\n            // انتظر خط Cairo' not in s:
+              if export_marker not in s:
+                  raise SystemExit('exportToPDF insertion marker not found')
+              s = s.replace(export_marker, export_replacement, 1)
+
+          start = s.find('        function executePrint(mode) {')
+          end = s.find('\n        // تمييز الأسبوع الحالي وتاريخ اليوم', start)
+          if start == -1 or end == -1:
+              raise SystemExit('executePrint markers not found')
+
+          new_execute = """        function executePrint(mode) {
+            const printRange = document.getElementById('print-page-range').value;
+            const previousClasses = document.body.className;
+
+            document.body.classList.remove('print-only-p1', 'print-only-p2');
+            if (printRange === 'p1') {
+                document.body.classList.add('print-only-p1');
+            } else if (printRange === 'p2') {
+                document.body.classList.add('print-only-p2');
+            }
+
+            if (mode === 'office') {
+                document.body.classList.remove('mode-interactive');
+                document.body.classList.add('mode-office');
+            } else {
+                document.body.classList.remove('mode-office');
+                document.body.classList.add('mode-interactive');
+                refreshInteractiveView();
+            }
+
+            applyPrintDeviceProfile();
+
+            const restore = () => {
+                document.body.className = previousClasses;
+                refreshInteractiveView();
+            };
+
+            window.addEventListener('afterprint', restore, { once: true });
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => setTimeout(() => window.print(), 80));
+            });
+
+            setTimeout(() => {
+                if (document.body.classList.contains('mobile-print-fit') ||
+                    document.body.classList.contains('print-only-p1') ||
+                    document.body.classList.contains('print-only-p2')) {
+                    restore();
+                }
+            }, 120000);
+        }
+"""
+          s = s[:start] + new_execute + s[end:]
+          p.write_text(s, encoding='utf-8')
+
+          sw = Path('operational-plan-pwa/sw.js')
+          t = sw.read_text(encoding='utf-8')
+          t = t.replace('abu-sula-operational-plan-v3', 'abu-sula-operational-plan-v4')
+          sw.write_text(t, encoding='utf-8')
+          PY
+
+      - name: Commit print fix
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            operational-plan-pwa/tailwind-play.js \
-            operational-plan-pwa/Cairo.ttf \
-            operational-plan-pwa/CAIRO_OFL.txt \
-            operational-plan-pwa/TAILWIND_LICENSE.txt \
-            operational-plan-pwa/cairo-local.css
+          git add operational-plan-pwa/index.html operational-plan-pwa/sw.js
           if git diff --cached --quiet; then
-            echo 'Dependencies are already up to date.'
+            echo 'No changes needed.'
             exit 0
           fi
-          git commit -m 'Vendor PWA runtime dependencies for offline use'
+          git commit -m 'Fix mobile A4 printing at 78 percent scale'
           git push origin HEAD:main
