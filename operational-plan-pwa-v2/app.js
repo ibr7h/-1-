@@ -61,7 +61,7 @@
     if (state.view === 'dashboard') root.innerHTML = dashboardView();
     if (state.view === 'schools') root.innerHTML = schoolsView();
     if (state.view === 'plans') root.innerHTML = plansView();
-    if (state.view === 'calendar') root.innerHTML = calendarView();
+    if (state.view === 'calendar') { root.innerHTML = calendarView(); setTimeout(() => window.PlanEditor?.openCalendar(state.activeSchool, state.plans), 0); }
     if (state.view === 'print') root.innerHTML = printView();
     if (state.view === 'settings') root.innerHTML = settingsView();
     bindViewActions();
@@ -126,7 +126,7 @@
   }
 
   function plansView() {
-    const cards = state.plans.length ? state.plans.map(p => `<article class="plan-card"><span class="badge">${p.term === '2' ? 'الفترة الثانية' : 'الفترة الأولى'}</span><h3>${escapeHTML(p.name)}</h3><p>${escapeHTML(p.academicYear || '')} · ${Number(p.weeksCount || 0)} أسبوع</p><div class="card-actions"><button class="text-button" data-action="open-print">معاينة الطباعة</button><button class="text-button" disabled style="opacity:.45">تحرير الأسابيع — قريبًا</button></div></article>`).join('') : `<div class="empty-state"><div class="big-icon">▦</div><h3>لا توجد خطط لهذه المدرسة</h3><p>أنشئ أول خطة ثم سيظهر محرر الأسابيع هنا.</p><button class="primary-button" data-action="add-plan">إنشاء خطة</button></div>`;
+    const cards = state.plans.length ? state.plans.map(p => `<article class="plan-card"><span class="badge">${p.term === '2' ? 'الفترة الثانية' : 'الفترة الأولى'}</span><h3>${escapeHTML(p.name)}</h3><p>${escapeHTML(p.academicYear || '')} · ${Number(p.weeksCount || 0)} أسبوع</p><div class="card-actions"><button class="text-button" data-action="open-print">معاينة الطباعة</button><button class="text-button" data-editor-plan="${escapeHTML(p.id)}">تحرير الأسابيع</button></div></article>`).join('') : `<div class="empty-state"><div class="big-icon">▦</div><h3>لا توجد خطط لهذه المدرسة</h3><p>أنشئ أول خطة ثم سيظهر محرر الأسابيع هنا.</p><button class="primary-button" data-action="add-plan">إنشاء خطة</button></div>`;
     return `${pageHead('الخطط', state.activeSchool ? `خطط ${escapeHTML(state.activeSchool.shortName || state.activeSchool.name)}` : 'اختر مدرسة أولًا', '<button class="primary-button" data-action="add-plan">＋ خطة جديدة</button>')}<div class="plan-grid">${cards}</div>`;
   }
 
@@ -155,6 +155,7 @@
     document.querySelectorAll('[data-action]').forEach(btn => btn.addEventListener('click', () => handleAction(btn.dataset.action)));
     document.querySelectorAll('[data-set-school]').forEach(btn => btn.addEventListener('click', () => setActiveSchool(btn.dataset.setSchool)));
     document.querySelectorAll('[data-edit-school]').forEach(btn => btn.addEventListener('click', () => openSchoolDialog(btn.dataset.editSchool)));
+    window.PlanEditor?.bindPlanButtons($('viewRoot'), state.activeSchool, state.plans);
   }
 
   function handleAction(action) {
@@ -222,6 +223,7 @@
       status: 'active', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
     await PlanDB.put('plans', plan);
+    await window.PlanEditor?.ensureWeeks(plan);
     $('planDialog').close();
     await refreshData();
     setView('plans');
