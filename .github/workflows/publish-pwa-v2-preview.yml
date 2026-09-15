@@ -1,5 +1,6 @@
 name: Publish PWA v2 preview
 
+# Preview sync revision: 2
 on:
   workflow_dispatch:
   push:
@@ -57,6 +58,7 @@ jobs:
       - name: Validate preview JavaScript
         run: |
           node --check operational-plan-pwa-v2/db.js
+          node --check operational-plan-pwa-v2/academic-calendar.js
           node --check operational-plan-pwa-v2/setup-wizard.js
           node --check operational-plan-pwa-v2/editor.js
           node --check operational-plan-pwa-v2/print-adapter.js
