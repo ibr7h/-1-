@@ -23,6 +23,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check operational-plan-pwa-v2/db.js
+          node --check operational-plan-pwa-v2/academic-calendar.js
           node --check operational-plan-pwa-v2/app.js
           node --check operational-plan-pwa-v2/editor.js
           node --check operational-plan-pwa-v2/setup-wizard.js
@@ -43,6 +44,7 @@ jobs:
           test -f operational-plan-pwa-v2/editor.js
           test -f operational-plan-pwa-v2/setup-wizard.js
           test -f operational-plan-pwa-v2/print-adapter.js
+          test -f operational-plan-pwa-v2/academic-calendar.js
           test -f operational-plan-pwa-v2/db.js
           test -f operational-plan-pwa-v2/sw.js
           test -f operational-plan-pwa-v2/manifest.webmanifest
