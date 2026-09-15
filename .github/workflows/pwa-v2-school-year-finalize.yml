@@ -1,0 +1,52 @@
+name: Finalize PWA v2 1448 school year
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pwa-v2
+    paths:
+      - '.github/workflows/pwa-v2-school-year-finalize.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Apply final calendar corrections
+        run: python3 scripts/pwa_v2_school_year_finalize.py
+
+      - name: Validate JavaScript
+        run: |
+          node --check operational-plan-pwa-v2/academic-calendar.js
+          node --check operational-plan-pwa-v2/app.js
+          node --check operational-plan-pwa-v2/editor.js
+          node --check operational-plan-pwa-v2/sw.js
+          node --check operational-plan-pwa/print-bridge-v2.js
+
+      - name: Protect frozen print layout
+        run: |
+          git diff --exit-code -- operational-plan-pwa/index.html
+          if git diff -- operational-plan-pwa/print-bridge-v2.js | grep -E '^[-+].*(@media print|page-container|page-1-signatures|page-2-signatures|ios-print)' ; then
+            echo 'Print layout rule change detected; refusing commit.'
+            exit 1
+          fi
+
+      - name: Commit finalized school-year behavior
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add operational-plan-pwa-v2/app.js operational-plan-pwa-v2/editor.js operational-plan-pwa-v2/sw.js operational-plan-pwa/print-bridge-v2.js
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git commit -m 'Finalize 1448 calendar and operational day statuses'
+          git push origin HEAD:pwa-v2
