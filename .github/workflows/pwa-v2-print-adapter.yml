@@ -1,0 +1,52 @@
+name: Integrate PWA v2 print adapter
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - pwa-v2
+    paths:
+      - '.github/workflows/pwa-v2-print-adapter.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Integrate print adapter
+        run: python3 scripts/pwa_v2_print_adapter_patch.py
+
+      - name: Validate JavaScript
+        run: |
+          node --check operational-plan-pwa-v2/print-adapter.js
+          node --check operational-plan-pwa/print-bridge-v2.js
+          node --check operational-plan-pwa-v2/app.js
+          node --check operational-plan-pwa-v2/sw.js
+          node --check operational-plan-pwa/sw.js
+
+      - name: Verify print layout was not edited by patch
+        run: |
+          git diff -- operational-plan-pwa/index.html | grep -E '^[+-].*print-bridge-v2.js|^@@|^---|^\+\+\+' || true
+          if git diff -- operational-plan-pwa/index.html | grep -E '^[+-].*(@media print|page-container|page-1-signatures|page-2-signatures|midyear-vacation-bar)'; then
+            echo 'Unexpected print layout change detected.'
+            exit 1
+          fi
+
+      - name: Commit adapter integration
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add operational-plan-pwa-v2/app.js operational-plan-pwa-v2/index.html operational-plan-pwa-v2/sw.js operational-plan-pwa/index.html operational-plan-pwa/sw.js
+          if git diff --cached --quiet; then
+            echo 'No changes needed.'
+            exit 0
+          fi
+          git commit -m 'Integrate multi-school data with frozen print template'
+          git push origin HEAD:pwa-v2
