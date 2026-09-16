@@ -5,6 +5,7 @@
   const payloadId = params.get('payload');
   const key = payloadId ? `operational-plan-print-payload-v2:${payloadId}` : '';
   const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+  const HIDDEN_DAY_EVENT_KEYS = new Set(['year-start', 'term2-start']);
   const WEEK_ORDINALS = [
     'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر',
     'الحادي عشر', 'الثاني عشر', 'الثالث عشر', 'الرابع عشر', 'الخامس عشر', 'السادس عشر', 'السابع عشر', 'الثامن عشر', 'التاسع عشر', 'العشرون',
@@ -133,9 +134,17 @@
     return eStart <= endDate && eEnd >= startDate;
   }
 
+  function isDayRowEvent(event) {
+    if (!event || event.showInWeek === false) return false;
+    if (HIDDEN_DAY_EVENT_KEYS.has(String(event.officialKey || ''))) return false;
+    const title = String(event.title || '').trim();
+    if (title === 'بداية العام الدراسي' || title === 'بداية الفترة الثانية') return false;
+    return true;
+  }
+
   function eventsOnDate(events, iso) {
     return (events || []).filter(event => {
-      if (!event.startDate || !iso) return false;
+      if (!isDayRowEvent(event) || !event.startDate || !iso) return false;
       return event.startDate <= iso && (event.endDate || event.startDate) >= iso;
     });
   }
@@ -279,6 +288,41 @@
     if (hijri) hijri.value = hijriParts(plan1.startDate) || '';
   }
 
+  function installReturnControl() {
+    if (document.getElementById('pwa-v2-return-button')) return;
+
+    const style = document.createElement('style');
+    style.id = 'pwa-v2-return-style';
+    style.textContent = `
+      #pwa-v2-return-button {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        left: calc(env(safe-area-inset-left, 0px) + 10px);
+        z-index: 99999;
+        border: 0;
+        border-radius: 999px;
+        padding: 9px 14px;
+        background: #0f766e;
+        color: #fff;
+        font: 700 13px Cairo, sans-serif;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, .18);
+        cursor: pointer;
+      }
+      @media print { #pwa-v2-return-button { display: none !important; } }
+    `;
+    document.head.appendChild(style);
+
+    const button = document.createElement('button');
+    button.id = 'pwa-v2-return-button';
+    button.type = 'button';
+    button.textContent = 'العودة إلى التطبيق';
+    button.addEventListener('click', () => {
+      if (history.length > 1) history.back();
+      else location.href = '../operational-plan-pwa-v2/';
+    });
+    document.body.appendChild(button);
+  }
+
   function applyPayload() {
     const payload = readPayload();
     if (!payload?.school) {
@@ -287,6 +331,7 @@
     }
 
     document.body.dataset.printSource = 'pwa-v2';
+    installReturnControl();
     const school = payload.school;
     const plans = payload.plans || [];
     const plan1 = plans.find(plan => String(plan.term) === '1') || null;
