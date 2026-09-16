@@ -14,7 +14,7 @@
   const fixedEvents = [
     { key: 'admin-return', title: 'عودة الهيئة الإدارية والمشرفين التربويين', type: 'occasion', startDate: '2026-08-11', endDate: '2026-08-11', term: '1' },
     { key: 'teachers-return', title: 'عودة المعلمين الممارسين للتدريس', type: 'occasion', startDate: '2026-08-16', endDate: '2026-08-16', term: '1' },
-    { key: 'year-start', title: 'بداية العام الدراسي', type: 'occasion', startDate: '2026-08-23', endDate: '2026-08-23', term: '1' },
+    { key: 'year-start', title: 'بداية العام الدراسي', type: 'occasion', startDate: '2026-08-23', endDate: '2026-08-23', term: '1', showInWeek: false },
     { key: 'national-day', title: 'إجازة اليوم الوطني', type: 'holiday', startDate: '2026-09-23', endDate: '2026-09-26', term: '1' },
 
     // الإجازات الإضافية المعتمدة لتعليم جازان/بقية المناطق في 1448–1449هـ.
@@ -24,7 +24,7 @@
     { key: 'extra-3', title: 'إجازة إضافية', type: 'holiday', startDate: '2027-01-07', endDate: '2027-01-07', term: '1', regional: true },
     { key: 'midyear-break', title: 'إجازة منتصف العام الدراسي', type: 'holiday', startDate: '2027-01-08', endDate: '2027-01-16', term: '1' },
 
-    { key: 'term2-start', title: 'بداية الفترة الثانية', type: 'occasion', startDate: '2027-01-17', endDate: '2027-01-17', term: '2' },
+    { key: 'term2-start', title: 'بداية الفترة الثانية', type: 'occasion', startDate: '2027-01-17', endDate: '2027-01-17', term: '2', showInWeek: false },
     { key: 'founding-day', title: 'إجازة يوم التأسيس', type: 'holiday', startDate: '2027-02-19', endDate: '2027-02-22', term: '2' },
     { key: 'eid-fitr', title: 'إجازة عيد الفطر', type: 'holiday', startDate: '2027-02-26', endDate: '2027-03-13', term: '2', fullWeekBreak: true },
     { key: 'extra-4', title: 'إجازة إضافية', type: 'holiday', startDate: '2027-04-11', endDate: '2027-04-11', term: '2', regional: true },
@@ -161,6 +161,7 @@
         type: event.type,
         startDate: event.startDate,
         endDate: event.endDate,
+        showInWeek: event.showInWeek !== false,
         notes: event.regional
           ? 'موعد إضافي معتمد لتعليم جازان/بقية المناطق للعام 1448–1449هـ'
           : 'موعد ثابت للعام الدراسي 1448–1449هـ',
