@@ -51,31 +51,24 @@
   }
 
   async function openSchoolPrint(school, plans = []) {
-    // Open synchronously from the user's click so iOS/Safari does not block the new tab.
-    const target = window.open('about:blank', '_blank');
-    if (!target) throw new Error('تعذر فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة لهذا الموقع.');
+    const payload = await buildPayload(school, plans);
+    const payloadId = makeId();
+    const key = `${KEY_PREFIX}${payloadId}`;
+    localStorage.setItem(key, JSON.stringify(payload));
 
-    try {
-      const payload = await buildPayload(school, plans);
-      const payloadId = makeId();
-      const key = `${KEY_PREFIX}${payloadId}`;
-      localStorage.setItem(key, JSON.stringify(payload));
-
-      // Remove stale print payloads while keeping the new one.
-      for (let i = localStorage.length - 1; i >= 0; i -= 1) {
-        const storageKey = localStorage.key(i);
-        if (storageKey?.startsWith(KEY_PREFIX) && storageKey !== key) {
-          localStorage.removeItem(storageKey);
-        }
+    // Remove stale print payloads while keeping the new one.
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const storageKey = localStorage.key(i);
+      if (storageKey?.startsWith(KEY_PREFIX) && storageKey !== key) {
+        localStorage.removeItem(storageKey);
       }
-
-      const url = `../operational-plan-pwa/index.html?printSource=pwa-v2&payload=${encodeURIComponent(payloadId)}`;
-      target.location.replace(url);
-      return payload;
-    } catch (error) {
-      try { target.close(); } catch (_) {}
-      throw error;
     }
+
+    // Stay in the same PWA window so iPhone/desktop users keep one navigation flow.
+    // location.assign keeps the app in browser history, so the print bridge can return here.
+    const url = `../operational-plan-pwa/index.html?printSource=pwa-v2&payload=${encodeURIComponent(payloadId)}`;
+    window.location.assign(url);
+    return payload;
   }
 
   window.PrintAdapter = {
