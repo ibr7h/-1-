@@ -1,4 +1,11 @@
 (() => {
+  const APP_VERSION = globalThis.APP_VERSION || '2.1.0';
+  let swRegistration = null;
+  let updateReloading = false;
+  let updateBannerTimer = null;
+  let updateSplashActive = false;
+  let updateTargetVersion = '';
+  let updateProgressEligible = false;
   const state = { view: 'dashboard', settings: null, schools: [], plans: [], activeSchool: null, installPrompt: null };
   const $ = id => document.getElementById(id);
   const typeLabel = { complex: 'مجمع', primary: 'ابتدائي', middle: 'متوسط', secondary: 'ثانوي', other: 'أخرى' };
@@ -147,6 +154,7 @@
         <div class="settings-row"><div><strong>نسخة احتياطية</strong><span>تصدير المدارس والخطط والإعدادات إلى ملف JSON.</span></div><button class="secondary-button" data-action="backup">تصدير</button></div>
         <div class="settings-row"><div><strong>استعادة نسخة</strong><span>استيراد ملف صادر من هذا التطبيق.</span></div><button class="secondary-button" data-action="restore">استيراد</button></div>
         <div class="settings-row"><div><strong>تثبيت التطبيق</strong><span>على الآيفون: مشاركة ← إضافة إلى الشاشة الرئيسية.</span></div><button class="secondary-button" data-action="install">تثبيت</button></div>
+        <div class="settings-row"><div><strong>تحديث التطبيق</strong><span>الإصدار الحالي v${escapeHTML(APP_VERSION)} · يتم الفحص تلقائيًا عند فتح التطبيق وعودة الاتصال.</span></div><button class="secondary-button" data-action="check-update">فحص الآن</button></div>
         <div class="settings-row"><div><strong>قالب الطباعة</strong><span>محمي ومعزول عن تغييرات واجهة v2.</span></div><span class="badge">ثابت</span></div>
       </div>`;
   }
@@ -169,6 +177,7 @@
     if (action === 'backup') exportBackup();
     if (action === 'restore') $('backupFile').click();
     if (action === 'install') installApp();
+    if (action === 'check-update') checkForAppUpdate({ manual: true });
     if (action === 'launch-print') {
       if (!window.PrintAdapter) { toast('محول الطباعة غير متاح'); return; }
       window.PrintAdapter.openSchoolPrint(state.activeSchool, state.plans)
@@ -300,6 +309,204 @@
     }
   }
 
+
+  function compareVersions(a = '0', b = '0') {
+    const pa = String(a).split('.').map(x => Number(x) || 0);
+    const pb = String(b).split('.').map(x => Number(x) || 0);
+    const n = Math.max(pa.length, pb.length);
+    for (let i = 0; i < n; i += 1) {
+      const diff = (pa[i] || 0) - (pb[i] || 0);
+      if (diff) return diff > 0 ? 1 : -1;
+    }
+    return 0;
+  }
+
+  function setVersionUI() {
+    const versionNode = $('appVersion');
+    if (versionNode) versionNode.textContent = 'الإصدار v' + APP_VERSION;
+  }
+
+  function showUpdateBanner(title, message, autoHide = 0) {
+    const banner = $('updateBanner');
+    if (!banner) return;
+    $('updateBannerTitle').textContent = title;
+    $('updateBannerText').textContent = message;
+    banner.hidden = false;
+    if (updateBannerTimer) clearTimeout(updateBannerTimer);
+    if (autoHide) updateBannerTimer = setTimeout(() => { banner.hidden = true; }, autoHide);
+  }
+
+  function updateAssetLabel(asset = '') {
+    const clean = String(asset).replace(/^\.\//, '');
+    const labels = {
+      '': 'واجهة التطبيق',
+      'index.html': 'واجهة التطبيق',
+      'app.js': 'وظائف التطبيق',
+      'app.css': 'تصميم التطبيق',
+      'setup-wizard.js': 'معالج الإعداد',
+      'setup-wizard.css': 'تصميم معالج الإعداد',
+      'editor.js': 'محرر الخطط',
+      'editor.css': 'تصميم المحرر',
+      'db.js': 'طبقة البيانات',
+      'academic-calendar.js': 'التقويم الدراسي',
+      'print-adapter.js': 'محول الطباعة',
+      'version.js': 'بيانات الإصدار',
+      'manifest.webmanifest': 'إعدادات PWA',
+      'Cairo.ttf': 'الخط العربي'
+    };
+    const name = clean.split('/').pop() || '';
+    return labels[clean] || labels[name] || name || 'ملفات التطبيق';
+  }
+
+  function showUpdateSplash({ version = '', title = 'جارٍ تحديث التطبيق', status = 'يتم تجهيز الإصدار الجديد…', progress = 0, detail = '' } = {}) {
+    const splash = $('updateSplash');
+    if (!splash) {
+      showUpdateBanner(title, status);
+      return;
+    }
+    updateSplashActive = true;
+    if (version) updateTargetVersion = version;
+    const value = Math.max(0, Math.min(100, Number(progress) || 0));
+    splash.hidden = false;
+    document.body.classList.add('update-in-progress');
+    $('updateSplashTitle').textContent = title;
+    $('updateSplashStatus').textContent = status;
+    $('updateSplashVersion').textContent = updateTargetVersion ? 'v' + updateTargetVersion : '—';
+    $('updateSplashProgress').style.width = value + '%';
+    $('updateSplashPercent').textContent = Math.round(value).toLocaleString('ar-SA') + '٪';
+    $('updateSplashDetail').textContent = detail || 'جارٍ تجهيز ملفات التحديث…';
+  }
+
+  function updateSplashFromWorker(data = {}) {
+    const phase = data.phase || '';
+    const raw = Math.max(0, Math.min(100, Number(data.progress) || 0));
+    const version = data.version || updateTargetVersion;
+    if (phase === 'start') {
+      showUpdateSplash({ version, title: 'تم العثور على تحديث', status: 'جارٍ تجهيز ملفات الإصدار الجديد…', progress: 8, detail: 'بدء تنزيل ملفات التطبيق' });
+      return;
+    }
+    if (phase === 'downloading') {
+      const mapped = 10 + raw * 0.76;
+      const current = Number(data.completed || 0) + 1;
+      const total = Number(data.total || 0);
+      const count = total ? ' · ' + Math.min(current, total).toLocaleString('ar-SA') + ' / ' + total.toLocaleString('ar-SA') : '';
+      showUpdateSplash({ version, title: 'جارٍ تنزيل التحديث', status: 'يتم تنزيل ملفات الإصدار الجديد بأمان…', progress: mapped, detail: updateAssetLabel(data.asset) + count });
+      return;
+    }
+    if (phase === 'installed') {
+      showUpdateSplash({ version, title: 'اكتمل التنزيل', status: 'جارٍ تثبيت التحديث…', progress: 90, detail: 'تم تنزيل جميع ملفات التطبيق' });
+      return;
+    }
+    if (phase === 'activating') {
+      showUpdateSplash({ version, title: 'جارٍ تفعيل الإصدار', status: 'يتم استبدال ملفات التطبيق القديمة…', progress: 96, detail: 'تهيئة النسخة الجديدة' });
+      return;
+    }
+    if (phase === 'activated') {
+      showUpdateSplash({ version, title: 'اكتمل التحديث', status: 'سيُعاد فتح التطبيق على الإصدار الجديد.', progress: 100, detail: 'تم تثبيت التحديث بنجاح' });
+      return;
+    }
+    if (phase === 'error') {
+      showUpdateSplash({ version, title: 'تعذر إكمال التحديث', status: 'احتفظ التطبيق بالإصدار الحالي، وسيعاد الفحص عند توفر اتصال مستقر.', progress: raw || 10, detail: data.asset ? updateAssetLabel(data.asset) : 'خطأ أثناء تنزيل الملفات' });
+    }
+  }
+
+  async function fetchPublishedVersion() {
+    try {
+      const response = await fetch('./version.js?check=' + Date.now(), { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
+      if (!response.ok) return null;
+      const text = await response.text();
+      const match = text.match(/APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
+      return match?.[1] || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function checkForAppUpdate({ manual = false } = {}) {
+    if (!navigator.onLine) {
+      if (manual) showUpdateBanner('لا يوجد اتصال', 'سيتم فحص التحديث عند عودة الاتصال.', 2600);
+      return;
+    }
+    if (manual) showUpdateBanner('فحص التحديثات', 'جارٍ التحقق من أحدث إصدار…');
+    const latest = await fetchPublishedVersion();
+    const newer = latest && compareVersions(latest, APP_VERSION) > 0;
+    if (newer) {
+      updateTargetVersion = latest;
+      updateProgressEligible = true;
+      showUpdateSplash({ version: latest, title: 'يوجد إصدار جديد', status: 'جارٍ بدء التحديث تلقائيًا…', progress: 5, detail: 'التحقق من ملفات الإصدار v' + latest });
+    }
+    try { await swRegistration?.update(); } catch (_) {}
+    if (swRegistration?.waiting) {
+      try { swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (_) {}
+    }
+    if (manual && !newer) showUpdateBanner('التطبيق محدث', 'أنت تستخدم أحدث إصدار v' + APP_VERSION + '.', 2400);
+  }
+
+  async function initAppUpdater() {
+    setVersionUI();
+    try {
+      const key = 'operational-plan-app-version';
+      const previous = localStorage.getItem(key);
+      if (previous && previous !== APP_VERSION) setTimeout(() => toast('تم تحديث التطبيق إلى الإصدار v' + APP_VERSION), 500);
+      localStorage.setItem(key, APP_VERSION);
+    } catch (_) {}
+    if (!('serviceWorker' in navigator)) return;
+
+    const hadController = Boolean(navigator.serviceWorker.controller);
+    updateProgressEligible = hadController;
+
+    try {
+      navigator.serviceWorker.addEventListener('message', event => {
+        const data = event.data || {};
+        if (data.type !== 'UPDATE_PROGRESS') return;
+        if (!updateProgressEligible && !updateSplashActive) return;
+        updateProgressEligible = true;
+        updateSplashFromWorker(data);
+      });
+
+      swRegistration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+
+      swRegistration.addEventListener('updatefound', () => {
+        const worker = swRegistration.installing;
+        if (!worker || !navigator.serviceWorker.controller) return;
+        updateProgressEligible = true;
+        showUpdateSplash({ version: updateTargetVersion, title: 'يوجد تحديث جديد', status: 'جارٍ تجهيز الإصدار الجديد…', progress: 7, detail: 'بدء تثبيت مكونات التحديث' });
+        worker.addEventListener('statechange', () => {
+          if (worker.state === 'installed') {
+            showUpdateSplash({ version: updateTargetVersion, title: 'اكتمل التنزيل', status: 'جارٍ تفعيل الإصدار الجديد…', progress: 92, detail: 'تم التحقق من ملفات التحديث' });
+            if (swRegistration.waiting) {
+              try { swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' }); } catch (_) {}
+            }
+          } else if (worker.state === 'activating') {
+            showUpdateSplash({ version: updateTargetVersion, title: 'جارٍ تفعيل الإصدار', status: 'لحظات وسيُفتح التطبيق من جديد…', progress: 97, detail: 'تطبيق النسخة الجديدة' });
+          }
+        });
+      });
+
+      let canReload = hadController;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        updateProgressEligible = true;
+        if (!canReload) {
+          canReload = true;
+          return;
+        }
+        if (updateReloading) return;
+        updateReloading = true;
+        showUpdateSplash({ version: updateTargetVersion || APP_VERSION, title: 'تم التحديث بنجاح', status: 'إعادة فتح التطبيق على الإصدار الجديد…', progress: 100, detail: 'اكتمل تثبيت جميع الملفات' });
+        setTimeout(() => location.reload(), 650);
+      });
+
+      await checkForAppUpdate();
+      setInterval(() => checkForAppUpdate(), 30 * 60 * 1000);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') checkForAppUpdate();
+      });
+      window.addEventListener('online', () => checkForAppUpdate());
+    } catch (error) {
+      console.warn('تعذر تهيئة محدث التطبيق', error);
+    }
+  }
+
   function bindGlobal() {
     document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
     $('schoolSwitcher').addEventListener('click', () => $('schoolMenu').hidden = !$('schoolMenu').hidden);
@@ -316,7 +523,7 @@
     bindGlobal();
     await PlanDB.ensureSeed();
     await refreshData();
-    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(console.warn);
+    await initAppUpdater();
   }
 
   boot().catch(error => {

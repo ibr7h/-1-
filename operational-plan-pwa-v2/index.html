@@ -15,6 +15,26 @@
   <link rel="stylesheet" href="./editor.css" />
 </head>
 <body>
+  <div id="updateBanner" class="update-banner" hidden role="status" aria-live="polite">
+    <strong id="updateBannerTitle">تحديث التطبيق</strong>
+    <span id="updateBannerText">جارٍ التحقق من أحدث إصدار…</span>
+  </div>
+
+  <div id="updateSplash" class="update-splash" hidden role="dialog" aria-modal="true" aria-labelledby="updateSplashTitle" aria-live="polite">
+    <div class="update-splash-card">
+      <div class="update-splash-icon">↻</div>
+      <div class="update-splash-copy">
+        <span class="eyebrow">تحديث التطبيق</span>
+        <h2 id="updateSplashTitle">جارٍ تجهيز التحديث</h2>
+        <p id="updateSplashStatus">سيتم تثبيت الإصدار الجديد تلقائيًا دون التأثير على بيانات الخطط.</p>
+      </div>
+      <div class="update-progress-track" aria-label="تقدم تحديث التطبيق"><span id="updateSplashProgress"></span></div>
+      <div class="update-progress-meta"><b id="updateSplashPercent">٠٪</b><span id="updateSplashDetail">التحقق من ملفات التحديث…</span></div>
+      <div class="update-splash-version"><span>الإصدار الجديد</span><b id="updateSplashVersion">—</b></div>
+      <small>بيانات المدارس والخطط محفوظة في IndexedDB بشكل مستقل عن ملفات التطبيق.</small>
+    </div>
+  </div>
+
   <div id="app" class="app-shell">
     <aside class="sidebar" aria-label="التنقل الرئيسي">
       <div class="brand-block">
@@ -36,7 +56,7 @@
 
       <div class="sidebar-footer">
         <span class="status-dot"></span>
-        <div><strong>يعمل دون اتصال</strong><small>بعد أول فتح للتطبيق</small></div>
+        <div><strong>يعمل دون اتصال</strong><small>بعد أول فتح للتطبيق</small><small id="appVersion">الإصدار v2.1.0</small></div>
       </div>
     </aside>
 
@@ -114,6 +134,7 @@
 
   <input id="backupFile" type="file" accept="application/json,.json" hidden />
 
+  <script src="./version.js"></script>
   <script src="./db.js"></script>
   <script src="./academic-calendar.js"></script>
   <script src="./setup-wizard.js"></script>
