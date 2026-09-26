@@ -1616,82 +1616,6 @@
         // ============================================
         // تصدير PDF آمن: كل صفحة A4 تُجهّز منفصلة ثم تُجمع
         // ============================================
-        function isIOSPrintEnvironment() {
-            return /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        }
-
-        function openIOSPrintPreview(title) {
-            const source = document.getElementById('multi-page-container');
-            if (!source) return false;
-
-            // window.open must happen directly inside the user's tap on iOS.
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) return false;
-
-            const styleMarkup = Array.from(document.querySelectorAll('head style, head link[rel="stylesheet"]'))
-                .map(node => node.outerHTML)
-                .join('\n');
-            const safeBase = location.href.split('#')[0]
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;');
-            const safeTitle = String(title || document.title)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-            const bodyClasses = Array.from(document.body.classList)
-                .filter(name => name !== 'is-editing')
-                .join(' ');
-            const pages = source.cloneNode(true);
-            pages.querySelectorAll('.no-print').forEach(node => node.remove());
-
-            printWindow.document.open();
-            printWindow.document.write(`<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<base href="${safeBase}">
-<title>${safeTitle}</title>
-${styleMarkup}
-<style>
-.ios27-print-helper{position:sticky;top:0;z-index:999999;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;padding:12px;background:#fff;border-bottom:1px solid #cbd5e1;box-shadow:0 4px 16px rgba(15,23,42,.12);font-family:Cairo,Arial,sans-serif}
-.ios27-print-helper button{border:0;border-radius:12px;padding:10px 16px;font:700 14px Cairo,Arial,sans-serif;cursor:pointer}
-.ios27-print-now{background:#0f766e;color:#fff}.ios27-print-close{background:#e2e8f0;color:#0f172a}
-.ios27-print-note{width:100%;text-align:center;font-size:11px;color:#475569}
-@media print{.ios27-print-helper{display:none!important}}
-</style>
-</head>
-<body class="${bodyClasses}">
-<div class="ios27-print-helper no-print">
-<button id="ios27PrintNow" class="ios27-print-now" type="button">طباعة الآن</button>
-<button id="ios27PrintClose" class="ios27-print-close" type="button">إغلاق</button>
-<div class="ios27-print-note">إذا لم تظهر نافذة الطباعة في iPhone: من زر المشاركة اختر «طباعة».</div>
-</div>
-${pages.outerHTML}
-</body>
-</html>`);
-            printWindow.document.close();
-
-            const printNow = printWindow.document.getElementById('ios27PrintNow');
-            const closeBtn = printWindow.document.getElementById('ios27PrintClose');
-            if (printNow) {
-                printNow.addEventListener('click', () => {
-                    try {
-                        printWindow.focus();
-                        printWindow.print();
-                    } catch (_) {
-                        alert('استخدم زر المشاركة في Safari ثم اختر «طباعة».');
-                    }
-                });
-            }
-            if (closeBtn) closeBtn.addEventListener('click', () => printWindow.close());
-            return true;
-        }
-
-        // ============================================
-        // تصدير PDF / طباعة: مسار مستقل وآمن للآيفون بعد iOS 27
-        // ============================================
         function exportToPDF() {
             const range = document.getElementById('print-page-range').value;
             const previousTitle = document.title;
@@ -1714,20 +1638,14 @@ ${pages.outerHTML}
                 refreshInteractiveView();
             };
 
-            const isIOSPrint = isIOSPrintEnvironment();
-            document.body.classList.toggle('ios-print', isIOSPrint);
-
-            if (isIOSPrint) {
-                const opened = openIOSPrintPreview(document.title);
-                restore();
-                if (!opened) {
-                    alert('تعذر فتح نافذة الطباعة. افتح الصفحة في Safari ثم من زر المشاركة اختر «طباعة».');
-                }
-                return;
-            }
-
             window.addEventListener('afterprint', restore, { once: true });
+
+            // Keep the print call synchronous with the user's tap.
+            const isIOSPrint = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            document.body.classList.toggle('ios-print', isIOSPrint);
             window.print();
+
             setTimeout(() => {
                 if (document.title !== previousTitle) restore();
             }, 120000);
@@ -1777,20 +1695,14 @@ ${pages.outerHTML}
                 refreshInteractiveView();
             };
 
-            const isIOSPrint = isIOSPrintEnvironment();
-            document.body.classList.toggle('ios-print', isIOSPrint);
-
-            if (isIOSPrint) {
-                const opened = openIOSPrintPreview(mode === 'office' ? 'الخطة التشغيلية - طباعة مكتبية' : 'الخطة التشغيلية - طباعة تفاعلية');
-                restore();
-                if (!opened) {
-                    alert('تعذر فتح نافذة الطباعة. افتح الصفحة في Safari ثم من زر المشاركة اختر «طباعة».');
-                }
-                return;
-            }
-
             window.addEventListener('afterprint', restore, { once: true });
+
+            // Keep the print call synchronous with the user's tap.
+            const isIOSPrint = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            document.body.classList.toggle('ios-print', isIOSPrint);
             window.print();
+
             setTimeout(() => {
                 if (document.body.classList.contains('print-only-p1') ||
                     document.body.classList.contains('print-only-p2') ||
