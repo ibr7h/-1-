@@ -85,10 +85,18 @@
       let changed = false;
       if (Number(week.number || 0) !== normalizedNumber) { week.number = normalizedNumber; changed = true; }
       if (Number(week.weekNumber || 0) !== normalizedNumber) { week.weekNumber = normalizedNumber; changed = true; }
-      if (!Array.isArray(week.dayStatuses) || week.dayStatuses.length < 5) {
-        week.dayStatuses = ['on', 'on', 'on', 'off', 'off'];
-        week.dayStatusesCustomized = false;
-        changed = true;
+      const defaultDayStatuses = ['on', 'on', 'on', 'off', 'off'];
+      const hasValidStatuses = Array.isArray(week.dayStatuses) && week.dayStatuses.length >= 5;
+      if (week.dayStatusesCustomized === true && hasValidStatuses) {
+        // Explicit user customization is preserved.
+      } else {
+        const current = hasValidStatuses ? week.dayStatuses.slice(0, 5) : [];
+        const differs = current.length !== 5 || current.some((status, i) => status !== defaultDayStatuses[i]);
+        if (differs || week.dayStatusesCustomized !== false) {
+          week.dayStatuses = [...defaultDayStatuses];
+          week.dayStatusesCustomized = false;
+          changed = true;
+        }
       }
       if (changed) await PlanDB.put('weeks', week);
     }

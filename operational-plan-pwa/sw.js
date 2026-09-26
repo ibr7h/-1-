@@ -1,4 +1,4 @@
-const CACHE_NAME = 'abu-sula-operational-plan-v19';
+const CACHE_NAME = 'abu-sula-operational-plan-v20';
 
 const APP_SHELL = [
   './',
@@ -6,7 +6,7 @@ const APP_SHELL = [
   './manifest.webmanifest',
   './tailwind-play.js',
   './cairo-local.css',
-  './print-bridge-v2.js',
+  './print-bridge-v2.js?v=20',
   './Cairo.ttf',
   './icons/icon-192.png',
   './icons/icon-512.png',
