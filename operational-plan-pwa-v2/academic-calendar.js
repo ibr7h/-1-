@@ -1,7 +1,13 @@
 (() => {
   const YEAR_LABEL = '1448–1449 هـ';
   const CALENDAR_KEY = 'sa-general-1448-1449-jazan';
-  const DEFAULT_DAY_PATTERN = ['on', 'on', 'on', 'off', 'off'];
+  const ODD_WEEK_PATTERN = ['on', 'on', 'on', 'off', 'off'];
+  const EVEN_WEEK_PATTERN = ['on', 'on', 'off', 'off', 'off'];
+
+  function dayPatternForWeek(weekNumber) {
+    const n = Math.max(1, Number(weekNumber) || 1);
+    return [...(n % 2 === 1 ? ODD_WEEK_PATTERN : EVEN_WEEK_PATTERN)];
+  }
 
   // الخطة التشغيلية المطبوعة تستخدم 19 أسبوعًا في الفترة الأولى
   // و18 أسبوعًا في الفترة الثانية. إجازات الأسابيع الكاملة لا تُنشأ
@@ -58,7 +64,7 @@
           title: `الأسبوع ${result.length + 1}`,
           startDate: cursor,
           endDate: schoolWeekEnd,
-          dayStatuses: [...DEFAULT_DAY_PATTERN]
+          dayStatuses: dayPatternForWeek(result.length + 1)
         });
       }
       cursor = addDays(cursor, 7);
@@ -100,7 +106,7 @@
         // لا نحتفظ بحالة "كل الأيام ✓" التي كانت تنتج عن القالب القديم.
         dayStatuses: old?.dayStatusesCustomized && Array.isArray(old.dayStatuses)
           ? old.dayStatuses.slice(0, 5)
-          : [...DEFAULT_DAY_PATTERN],
+          : dayPatternForWeek(range.number),
         dayStatusesCustomized: Boolean(old?.dayStatusesCustomized),
         createdAt: old?.createdAt || now,
         updatedAt: now
@@ -188,7 +194,8 @@
     key: CALENDAR_KEY,
     yearLabel: YEAR_LABEL,
     totalInstructionalWeeks: 37,
-    dayPattern: [...DEFAULT_DAY_PATTERN],
+    dayPattern: dayPatternForWeek(1),
+    dayPatternForWeek,
     periods,
     fixedEvents: fixedEvents.map(item => ({ ...item })),
     instructionalWeeks,

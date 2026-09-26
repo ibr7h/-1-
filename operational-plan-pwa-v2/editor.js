@@ -68,7 +68,9 @@
           title: `الأسبوع ${i + 1}`,
           startDate,
           endDate,
-          dayStatuses: ['on', 'on', 'on', 'off', 'off'],
+          dayStatuses: (i + 1) % 2 === 1
+            ? ['on', 'on', 'on', 'off', 'off']
+            : ['on', 'on', 'off', 'off', 'off'],
           dayStatusesCustomized: false,
           content: '',
           notes: '',
@@ -85,7 +87,9 @@
       let changed = false;
       if (Number(week.number || 0) !== normalizedNumber) { week.number = normalizedNumber; changed = true; }
       if (Number(week.weekNumber || 0) !== normalizedNumber) { week.weekNumber = normalizedNumber; changed = true; }
-      const defaultDayStatuses = ['on', 'on', 'on', 'off', 'off'];
+      const defaultDayStatuses = normalizedNumber % 2 === 1
+        ? ['on', 'on', 'on', 'off', 'off']
+        : ['on', 'on', 'off', 'off', 'off'];
       const hasValidStatuses = Array.isArray(week.dayStatuses) && week.dayStatuses.length >= 5;
       if (week.dayStatusesCustomized === true && hasValidStatuses) {
         // Explicit user customization is preserved.

@@ -18,14 +18,20 @@
       weeks = await window.PlanEditor.ensureWeeks(plan);
     }
 
-    const approvedDayPattern = ['on', 'on', 'on', 'off', 'off'];
     weeks = [...weeks]
-      .map((week, index) => ({
-        ...week,
-        number: normalizeWeekNumber(week, index),
-        dayStatuses: [...approvedDayPattern],
-        dayStatusesCustomized: false
-      }))
+      .map((week, index) => {
+        const number = normalizeWeekNumber(week, index);
+        const approvedDayPattern = number % 2 === 1
+          ? ['on', 'on', 'on', 'off', 'off']
+          : ['on', 'on', 'off', 'off', 'off'];
+        return {
+          ...week,
+          number,
+          weekNumber: number,
+          dayStatuses: approvedDayPattern,
+          dayStatusesCustomized: false
+        };
+      })
       .sort((a, b) => a.number - b.number);
 
     events.sort((a, b) => String(a.startDate || '').localeCompare(String(b.startDate || '')));

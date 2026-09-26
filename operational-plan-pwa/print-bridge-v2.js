@@ -164,10 +164,12 @@
       if (dayEvents.length) {
         row.innerHTML = `<td colspan="2" class="text-[9.5px] font-black text-amber-900 py-0.5">${dayEvents.map(e => e.title).filter(Boolean).join(' • ')}</td>`;
       } else {
-        // Approved weekly pattern for the operational plan:
-        // Sunday–Tuesday ✓, Wednesday–Thursday X.
-        // Do not allow stale persisted status arrays from older releases to alter print output.
-        const defaultStatuses = ['on', 'on', 'on', 'off', 'off'];
+        // Approved alternating pattern:
+        // odd weeks: 3 ✓ + 2 X, even weeks: 2 ✓ + 3 X.
+        const weekNumber = Math.max(1, Number(week?.number ?? week?.weekNumber ?? (Number(card.dataset.weekIndex || 0) + 1)) || 1);
+        const defaultStatuses = weekNumber % 2 === 1
+          ? ['on', 'on', 'on', 'off', 'off']
+          : ['on', 'on', 'off', 'off', 'off'];
         const status = defaultStatuses[dayIndex];
         const isOn = !['off', 'x', 'X', false, 0].includes(status);
         row.innerHTML = `<td>${DAY_NAMES[dayIndex] || ''}</td><td class="font-bold ${isOn ? 'text-emerald-700' : 'text-rose-600'} clickable-status">${isOn ? '✓' : 'X'}</td>`;

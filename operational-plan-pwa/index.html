@@ -1369,7 +1369,10 @@
                 if (row.children.length === 1 || !row.querySelector('.clickable-status')) {
                     row.className = dayOffset === 4 ? '' : 'border-b border-slate-200';
                     row.setAttribute('data-day', String(dayOffset));
-                    const isOnDay = dayOffset < 3;
+                    const weekIndex = Number(card.getAttribute('data-week-index'));
+                    const weekNumber = Number.isFinite(weekIndex) ? weekIndex + 1 : 1;
+                    const onDays = weekNumber % 2 === 1 ? 3 : 2;
+                    const isOnDay = dayOffset < onDays;
                     const statusClass = isOnDay ? 'text-emerald-700' : 'text-rose-600';
                     const statusText = isOnDay ? '✓' : 'X';
                     row.innerHTML = `<td>${dayNamesArabic[dayOffset]}</td><td class="font-bold ${statusClass} clickable-status">${statusText}</td>`;
@@ -1842,18 +1845,17 @@
             let changed = false;
 
             document.querySelectorAll('.week-card-standard').forEach(card => {
-                // From this release onward, an explicitly edited week is never normalized.
-                if (card.dataset.statusCustomized === 'true') return;
+                const weekIndex = Number(card.getAttribute('data-week-index'));
+                const weekNumber = Number.isFinite(weekIndex) ? weekIndex + 1 : 1;
+                const onDays = weekNumber % 2 === 1 ? 3 : 2;
 
-                const rows = Array.from(card.querySelectorAll('tr[data-day]'));
-                let ordinaryRows = 0;
-                rows.forEach(row => {
+                card.querySelectorAll('tr[data-day]').forEach(row => {
                     const cell = row.querySelector('.clickable-status');
                     if (!cell) return;
                     const dayOffset = Number(row.dataset.day);
                     if (!Number.isInteger(dayOffset) || dayOffset < 0 || dayOffset > 4) return;
-                    ordinaryRows += 1;
-                    const isOnDay = dayOffset < 3;
+
+                    const isOnDay = dayOffset < onDays;
                     const expectedText = isOnDay ? '✓' : 'X';
                     const expectedClass = `font-bold ${isOnDay ? 'text-emerald-700' : 'text-rose-600'} clickable-status`;
                     if (cell.textContent.trim() !== expectedText || cell.className !== expectedClass) {
@@ -1862,9 +1864,6 @@
                         changed = true;
                     }
                 });
-
-                // A holiday/occasion row may replace one ordinary day; the remaining rows are still normalized by data-day.
-                if (ordinaryRows > 0 && ordinaryRows < 5) changed = changed || false;
             });
 
             if (changed) saveToLocalStorage();
@@ -1914,6 +1913,6 @@
         }
     </script>
 
-    <script src="./print-bridge-v2.js?v=20"></script>
+    <script src="./print-bridge-v2.js?v=21"></script>
 </body>
 </html>
