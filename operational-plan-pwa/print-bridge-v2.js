@@ -164,11 +164,11 @@
       if (dayEvents.length) {
         row.innerHTML = `<td colspan="2" class="text-[9.5px] font-black text-amber-900 py-0.5">${dayEvents.map(e => e.title).filter(Boolean).join(' • ')}</td>`;
       } else {
+        // Approved weekly pattern for the operational plan:
+        // Sunday–Tuesday ✓, Wednesday–Thursday X.
+        // Do not allow stale persisted status arrays from older releases to alter print output.
         const defaultStatuses = ['on', 'on', 'on', 'off', 'off'];
-        const stored = week?.dayStatusesCustomized === true && Array.isArray(week?.dayStatuses)
-          ? week.dayStatuses
-          : defaultStatuses;
-        const status = stored?.[dayIndex] || defaultStatuses[dayIndex];
+        const status = defaultStatuses[dayIndex];
         const isOn = !['off', 'x', 'X', false, 0].includes(status);
         row.innerHTML = `<td>${DAY_NAMES[dayIndex] || ''}</td><td class="font-bold ${isOn ? 'text-emerald-700' : 'text-rose-600'} clickable-status">${isOn ? '✓' : 'X'}</td>`;
       }
