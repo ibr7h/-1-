@@ -25,7 +25,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(
-      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      keys
+        .filter((key) => key !== CACHE_NAME && key.startsWith('abu-sula-operational-plan-'))
+        .map((key) => caches.delete(key))
     );
     await self.clients.claim();
   })());
