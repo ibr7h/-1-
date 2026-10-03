@@ -166,6 +166,9 @@
           الأسرة قيد المتابعة الحية
         </h2>
         <div class="flex items-center gap-2">
+          <button id="load-demo-data-btn" type="button" class="text-xs bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-300 px-3 py-1.5 rounded-lg transition font-bold">
+            بيانات تجريبية 🧪
+          </button>
           <button id="test-alarm-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition">
             تجربة صوت التنبيه 🔔
           </button>
@@ -232,7 +235,7 @@
       <p>أداة مساعدة محلية لحساب الزمن ومتابعة المحاليل الوريدية — لا تستبدل المضخة أو بروتوكول المراقبة السريرية.</p>
       <p>لا تعتمد على هذا التطبيق كوسيلة التنبيه الوحيدة، خصوصًا عند إغلاق التطبيق أو تعليق النظام له في الخلفية.</p>
       <p>البيانات تحفظ محليًا على هذا الجهاز. يفضّل استخدام رقم الملف/معرّف مختصر بدل الاسم الكامل.</p>
-      <p class="text-slate-600">IV Nurse Alert PWA • v1.3.1</p>
+      <p class="text-slate-600">IV Nurse Alert PWA • v1.4.0</p>
     </footer>
   </div>
 
@@ -858,6 +861,43 @@
       showToast('تمت إضافة السرير بنجاح', `تمت جدولة مغذي ${bedNumber} للانتهاء في تمام ${new Date(endTimeMs).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`);
     });
 
+    function createDemoBed({ bedNumber, patientName, solutionName, volume, minutesLeft, earlyMins = 15, mode = 'pump', rate = 100 }) {
+      const nowMs = Date.now();
+      const totalDurationMs = Math.max((minutesLeft + 45) * 60000, 60 * 60000);
+      const endTimeMs = nowMs + (minutesLeft * 60000);
+      return {
+        id: 'demo_' + bedNumber.replace(/\s+/g, '_') + '_' + nowMs,
+        bedNumber, patientName, solutionName, volume,
+        currentMode: mode, pumpRate: mode === 'pump' ? rate : null,
+        dropsPerMin: mode === 'gravity' ? 25 : null, dropFactor: mode === 'gravity' ? 20 : null,
+        earlyMins, startTimeMs: endTimeMs - totalDurationMs, endTimeMs,
+        earlyAlertTimeMs: endTimeMs - (earlyMins * 60000), totalDurationMs,
+        earlyAlertTriggered: false, orangeAlertTriggered: false, yellowAlertTriggered: false,
+        redAlertTriggered: false, endAlertTriggered: false, status: 'running', isDemo: true
+      };
+    }
+
+    function loadDemoData() {
+      if (beds.some(b => !b.isDemo) && !window.confirm('توجد حالات حقيقية مسجلة. ستضاف بيانات الاختبار بجانبها دون حذفها. هل تريد المتابعة؟')) return;
+      beds = beds.filter(b => !b.isDemo);
+      const scenarios = [
+        { bedNumber: 'تجريبي 101', patientName: 'TEST-A', solutionName: 'محلول تجريبي — طبيعي', volume: 500, minutesLeft: 42 },
+        { bedNumber: 'تجريبي 102', patientName: 'TEST-B', solutionName: 'محلول تجريبي — برتقالي', volume: 500, minutesLeft: 12 },
+        { bedNumber: 'تجريبي 103', patientName: 'TEST-C', solutionName: 'محلول تجريبي — أصفر', volume: 250, minutesLeft: 8 },
+        { bedNumber: 'تجريبي 104', patientName: 'TEST-D', solutionName: 'محلول تجريبي — أحمر', volume: 250, minutesLeft: 3 },
+        { bedNumber: 'تجريبي 105', patientName: 'TEST-E', solutionName: 'محلول تجريبي — منتهي', volume: 100, minutesLeft: -1 }
+      ];
+      beds.push(...scenarios.map(createDemoBed));
+      saveBeds(); renderBeds();
+      showToast('تم تحميل بيانات الاختبار', '5 حالات: طبيعي، برتقالي، أصفر، أحمر، ومنتهي.');
+    }
+
+    function clearDemoData() {
+      beds = beds.filter(b => !b.isDemo);
+      saveBeds(); renderBeds();
+      showToast('تم حذف بيانات الاختبار', 'الحالات الحقيقية لم تتغير.');
+    }
+
     function saveBeds() {
       localStorage.setItem('iv_nurse_beds', JSON.stringify(beds));
       updateStats();
@@ -940,6 +980,7 @@
           statusBadge = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-700 border border-emerald-300 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> تدفق مستقر</span>';
         }
 
+        const demoBadge = bed.isDemo ? '<span class="px-2 py-1 rounded-lg bg-violet-100 text-violet-700 border border-violet-300 text-[10px] font-extrabold">بيانات تجريبية</span>' : '';
         const priorityBadge = isPriority ? `<div class="mb-3 flex items-center justify-between gap-2 rounded-xl border ${phase === 'red' ? 'border-red-300 bg-red-100 text-red-800' : phase === 'yellow' ? 'border-yellow-300 bg-yellow-100 text-yellow-800' : phase === 'orange' ? 'border-orange-300 bg-orange-100 text-orange-800' : 'border-teal-200 bg-teal-50 text-teal-800'} px-3 py-2 text-xs font-extrabold"><span>الأولوية الآن · الأقرب للانتهاء</span><span class="font-mono">${formatCountdown(remainingMs)}</span></div>` : '';
 
         const endTimeStr = new Date(bed.endTimeMs).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
@@ -961,7 +1002,7 @@
                     ${safeSolutionName}
                   </p>
                 </div>
-                ${statusBadge}
+                <div class="flex flex-col items-end gap-1">${demoBadge}${statusBadge}</div>
               </div>
 
               <!-- Main countdown box -->
@@ -1015,6 +1056,8 @@
       }).join('');
 
       updateStats();
+      const demoBtn = document.getElementById('load-demo-data-btn');
+      if (demoBtn) demoBtn.textContent = beds.some(b => b.isDemo) ? 'حذف بيانات الاختبار 🧪' : 'بيانات تجريبية 🧪';
     }
 
     window.completeBed = function(id) {
@@ -1146,6 +1189,13 @@
     setInterval(checkAlertsAndTick, 1000);
 
     // PWA / install / notifications / wake lock
+    document.getElementById('load-demo-data-btn').addEventListener('click', () => {
+      if (beds.some(b => b.isDemo)) {
+        if (window.confirm('هل تريد حذف جميع بيانات الاختبار؟')) clearDemoData();
+      } else {
+        loadDemoData();
+      }
+    });
     document.getElementById('notification-btn').addEventListener('click', requestNotificationPermission);
     document.getElementById('wake-lock-btn').addEventListener('click', toggleWakeLock);
 
