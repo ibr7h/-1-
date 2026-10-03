@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="color-scheme" content="dark">
+  <meta name="application-name" content="IV Nurse Alert">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="تنبيه المحاليل">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="أداة مساعدة لمتابعة أزمنة المحاليل الوريدية والتنبيهات في محطة التمريض.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <title>نظام متابعة وتنبيه المحاليل الوريدية | IV Infusion Monitor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['-apple-system','BlinkMacSystemFont','Segoe UI','Tahoma','Arial','sans-serif'],
+            mono: ['ui-monospace','SFMono-Regular','Menlo','Consolas','monospace']
+          }
+        }
+      }
+    };
+  </script>
+<style>
+    /* Pulse ring for urgency */
+    @keyframes alertGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+      50% { box-shadow: 0 0 0 14px rgba(239, 68, 68, 0); }
+    }
+    .urgent-alert {
+      animation: alertGlow 1.5s infinite;
+    }
+
+    html { background: #0f172a; }
+    body {
+      padding-top: env(safe-area-inset-top);
+      padding-right: env(safe-area-inset-right);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      overscroll-behavior-y: contain;
+    }
+    button, input, select { touch-action: manipulation; }
+    .tap-target { min-height: 44px; }
+    @media (max-width: 640px) {
+      #toast { left: 0.75rem !important; right: 0.75rem !important; max-width: none !important; bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+      #add-modal > div { max-height: 92dvh; overflow-y: auto; margin-top: auto; margin-bottom: auto; }
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans selection:bg-teal-500 selection:text-white">
+  <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col min-h-screen">
+    
+    <!-- Top Bar / Header -->
+    <header class="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 sm:p-5 shadow-xl mb-6">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Logo and Title -->
+        <div class="flex items-center gap-3 w-full md:w-auto">
+          <div class="h-12 w-12 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-teal-500/20 text-white flex-shrink-0">
+            <!-- IV Bag Icon SVG -->
+            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 3h12"/>
+              <path d="M12 3v3"/>
+              <rect x="7" y="6" width="10" height="13" rx="3"/>
+              <path d="M10 10h4"/>
+              <path d="M12 8v4"/>
+              <path d="M12 19v3"/>
+              <path d="M10 22h4"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              نظام متابعة وتنبيه المغذيات
+              <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/30">محطة التمريض</span>
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-400">حساب فوري لزمن الانتهاء وجدولة التنبيهات الصوتية للأسرة</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between md:justify-end gap-2 sm:gap-3 w-full md:w-auto">
+          <!-- Realtime Digital Clock -->
+          <div class="bg-slate-900/80 border border-slate-700 px-3 py-2 rounded-xl text-center">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">الوقت الحالي</span>
+            <span id="current-clock" class="font-mono text-base font-bold text-emerald-400">00:00:00</span>
+          </div>
+
+          <!-- Active beds counter badge -->
+          <div class="bg-slate-900/80 border border-slate-700 px-3 py-2 rounded-xl text-center">
+            <span class="text-[10px] uppercase font-bold text-slate-400 block">الأسرة النشطة</span>
+            <span id="active-count-badge" class="font-mono text-base font-bold text-teal-400">0 سرير</span>
+          </div>
+
+          <!-- Sound Mute/Active Toggle -->
+          <button id="toggle-sound-btn" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-2.5 rounded-xl border border-slate-600 transition duration-150 text-xs sm:text-sm font-semibold">
+            <svg id="sound-icon-on" class="w-5 h-5 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+            </svg>
+            <span id="sound-status-text">الصوت مفعل</span>
+          </button>
+
+          <button id="notification-btn" type="button" class="tap-target flex items-center gap-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-2 rounded-xl border border-slate-600 transition text-xs font-semibold" title="تفعيل إشعارات النظام">
+            <span aria-hidden="true">🔔</span>
+            <span id="notification-status-text">الإشعارات</span>
+          </button>
+
+          <button id="wake-lock-btn" type="button" class="tap-target flex items-center gap-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-2 rounded-xl border border-slate-600 transition text-xs font-semibold" title="إبقاء الشاشة مستيقظة أثناء المتابعة">
+            <span aria-hidden="true">☀️</span>
+            <span id="wake-lock-status-text">إبقاء الشاشة</span>
+          </button>
+
+          <button id="install-app-btn" type="button" class="tap-target flex items-center gap-2 bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-2 rounded-xl border border-slate-600 transition text-xs font-semibold" title="تثبيت التطبيق">
+            <span aria-hidden="true">⬇️</span>
+            <span>تثبيت</span>
+          </button>
+
+          <!-- Add Infusion Trigger Button -->
+          <button id="open-add-modal-btn" class="flex items-center gap-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 active:scale-95 text-white px-4 py-2.5 rounded-xl shadow-lg shadow-teal-500/25 transition duration-150 text-sm font-bold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+            </svg>
+            <span>إضافة سرير جديد</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div class="bg-slate-800/60 border border-slate-700/50 p-3.5 rounded-xl">
+        <span class="text-xs text-slate-400 block mb-1">المحاليل الجارية</span>
+        <div class="flex items-baseline gap-2">
+          <span id="stat-running" class="text-2xl font-bold font-mono text-emerald-400">0</span>
+          <span class="text-xs text-emerald-500/80">مستقرة</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/50 p-3.5 rounded-xl">
+        <span class="text-xs text-slate-400 block mb-1">قرب الانتهاء (تنبيه مسبق)</span>
+        <div class="flex items-baseline gap-2">
+          <span id="stat-warning" class="text-2xl font-bold font-mono text-amber-400">0</span>
+          <span class="text-xs text-amber-500/80">أقل من المدة المحددة</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/50 p-3.5 rounded-xl">
+        <span class="text-xs text-slate-400 block mb-1">انتهت / بحاجة لتدخل</span>
+        <div class="flex items-baseline gap-2">
+          <span id="stat-ended" class="text-2xl font-bold font-mono text-rose-500">0</span>
+          <span class="text-xs text-rose-400">تتطلب استبدالاً فورياً</span>
+        </div>
+      </div>
+      <div class="bg-slate-800/60 border border-slate-700/50 p-3.5 rounded-xl">
+        <span class="text-xs text-slate-400 block mb-1">إجمالي الأسرة المكتملة</span>
+        <div class="flex items-baseline gap-2">
+          <span id="stat-completed" class="text-2xl font-bold font-mono text-sky-400">0</span>
+          <span class="text-xs text-sky-500/80">خلال هذه المناوبة</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Infusions Grid Container -->
+    <main class="flex-1">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-teal-400"></span>
+          الأسرة قيد المتابعة الحية
+        </h2>
+        <div class="flex items-center gap-2">
+          <button id="test-alarm-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg transition">
+            تجربة صوت التنبيه 🔔
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid of Bed Cards -->
+      <div id="beds-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Bed cards will be dynamically injected here -->
+      </div>
+
+      <!-- Empty State when no beds are monitored -->
+      <div id="empty-state" class="hidden text-center py-16 px-4 bg-slate-800/30 border border-dashed border-slate-700/80 rounded-2xl my-4">
+        <div class="w-16 h-16 mx-auto mb-4 bg-slate-800 text-slate-500 rounded-full flex items-center justify-center">
+          <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-300 mb-1">لا توجد محاليل وريدية مسجلة حالياً</h3>
+        <p class="text-sm text-slate-500 max-w-sm mx-auto mb-5">اضغط على زر "إضافة سرير جديد" لإدخال بيانات المغذي وبدء التوقيت والتنبيه الذكي.</p>
+        <button onclick="document.getElementById('open-add-modal-btn').click()" class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition">
+          + تسجيل محلول لسرير
+        </button>
+      </div>
+    </main>
+
+    <section class="mt-10 bg-slate-800/40 border border-slate-700/50 rounded-2xl p-4 sm:p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-slate-300 flex items-center gap-2">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          سجل المحاليل المكتملة والمرفوعة حديثاً
+        </h3>
+        <button id="clear-history-btn" class="text-xs text-slate-400 hover:text-rose-400 transition">مسح السجل</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs text-slate-300">
+          <thead class="text-slate-400 bg-slate-800/70 border-b border-slate-700">
+            <tr>
+              <th class="py-2.5 px-3">رقم السرير</th>
+              <th class="py-2.5 px-3">المريض</th>
+              <th class="py-2.5 px-3">المحلول والحجم</th>
+              <th class="py-2.5 px-3">وقت البدء</th>
+              <th class="py-2.5 px-3">وقت الانتهاء الفعلي</th>
+              <th class="py-2.5 px-3">الحالة</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body" class="divide-y divide-slate-800">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div id="pwa-status-panel" class="mt-6 flex flex-wrap items-center justify-center gap-2 text-[11px] text-slate-400">
+      <span id="network-status" class="px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800/60">متصل بالشبكة</span>
+      <span id="pwa-mode-status" class="px-2.5 py-1 rounded-full border border-slate-700 bg-slate-800/60">وضع المتصفح</span>
+      <button id="update-app-btn" type="button" class="hidden tap-target px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold">تحديث متاح — إعادة التشغيل</button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-5 text-center text-xs text-slate-500 py-3 space-y-1">
+      <p>أداة مساعدة محلية لحساب الزمن ومتابعة المحاليل الوريدية — لا تستبدل المضخة أو بروتوكول المراقبة السريرية.</p>
+      <p>لا تعتمد على هذا التطبيق كوسيلة التنبيه الوحيدة، خصوصًا عند إغلاق التطبيق أو تعليق النظام له في الخلفية.</p>
+      <p>البيانات تحفظ محليًا على هذا الجهاز. يفضّل استخدام رقم الملف/معرّف مختصر بدل الاسم الكامل.</p>
+      <p class="text-slate-600">IV Nurse Alert PWA • v1.0.0</p>
+    </footer>
+  </div>
+
+  <div id="add-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-800 border border-slate-700 w-full max-w-xl rounded-2xl shadow-2xl p-5 sm:p-6 my-8 transform transition-all overscroll-contain">
+      <div class="flex items-center justify-between pb-4 border-b border-slate-700 mb-5">
+        <div class="flex items-center gap-2">
+          <div class="p-2 bg-teal-500/20 text-teal-400 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+          </div>
+          <h3 id="modal-title" class="text-lg font-bold text-white">إضافة مغذي جديد لسرير</h3>
+        </div>
+        <button id="close-modal-btn" class="text-slate-400 hover:text-white rounded-lg p-1.5 hover:bg-slate-700 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <form id="infusion-form" class="space-y-4">
+        <!-- Bed and Patient Info -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              رقم السرير / الغرفة <span class="text-rose-400">*</span>
+            </label>
+            <input type="text" id="bed-number" required placeholder="مثال: سرير 104 - A" 
+                   class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              معرّف المريض / رقم الملف (اختياري)
+            </label>
+            <input type="text" id="patient-name" placeholder="يفضل رقم الملف أو الأحرف الأولى" autocomplete="off" 
+                   class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Drug or Solution Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">نوع المحلول الوريدي</label>
+          <input type="text" id="solution-name" value="محلول ملحي عادي Normal Saline 0.9%" 
+                 class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+        </div>
+
+        <!-- Volume Selection with quick presets -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">
+            الحجم الكلي للمحلول (مل / mL) <span class="text-rose-400">*</span>
+          </label>
+          <div class="flex gap-2 mb-2">
+            <button type="button" onclick="setVolume(100)" class="vol-btn flex-1 py-1.5 text-xs bg-slate-700 hover:bg-teal-600/40 border border-slate-600 rounded-lg text-slate-200 transition">100 مل</button>
+            <button type="button" onclick="setVolume(250)" class="vol-btn flex-1 py-1.5 text-xs bg-slate-700 hover:bg-teal-600/40 border border-slate-600 rounded-lg text-slate-200 transition">250 مل</button>
+            <button type="button" onclick="setVolume(500)" class="vol-btn flex-1 py-1.5 text-xs bg-teal-600 border border-teal-500 rounded-lg text-white font-bold transition">500 مل</button>
+            <button type="button" onclick="setVolume(1000)" class="vol-btn flex-1 py-1.5 text-xs bg-slate-700 hover:bg-teal-600/40 border border-slate-600 rounded-lg text-slate-200 transition">1000 مل</button>
+          </div>
+          <input type="number" id="volume-input" required min="10" max="5000" value="500"
+                 class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+        </div>
+
+        <!-- Mode selection: Pump or Gravity Drip -->
+        <div class="pt-1">
+          <label class="block text-xs font-semibold text-slate-300 mb-2">طريقة الإعطاء</label>
+          <div class="grid grid-cols-2 gap-2 bg-slate-900 p-1 rounded-xl border border-slate-700">
+            <button type="button" id="mode-pump-btn" class="py-2 text-xs font-bold rounded-lg bg-teal-600 text-white transition flex items-center justify-center gap-1.5 shadow">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              مضخة تسريب (مل/ساعة)
+            </button>
+            <button type="button" id="mode-gravity-btn" class="py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+              تقطير يدوي (نقاط/دقيقة)
+            </button>
+          </div>
+        </div>
+
+        <!-- Inputs for Pump Mode -->
+        <div id="pump-inputs" class="grid grid-cols-1 gap-2">
+          <label class="block text-xs font-semibold text-slate-300">
+            معدل التدفق (مل/ساعة - mL/hr) <span class="text-rose-400">*</span>
+          </label>
+          <input type="number" id="pump-rate" min="1" max="1500" value="125" step="0.5"
+                 class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+        </div>
+
+        <!-- Inputs for Gravity Mode (hidden by default) -->
+        <div id="gravity-inputs" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              معدل التنقيط (نقطة/دقيقة - gtt/min)
+            </label>
+            <input type="number" id="drops-per-min" min="1" max="300" value="30"
+                   class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              عامل التنقيط (Drop Factor)
+            </label>
+            <select id="drop-factor" class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="20" selected>20 نقطة/مل (جهاز بالغين قياسي)</option>
+              <option value="15">15 نقطة/مل (جهاز تسريب عادي)</option>
+              <option value="10">10 نقطة/مل (مجموعة الدم/السوائل اللزجة)</option>
+              <option value="60">60 نقطة/مل (ميكرودريب / أطفال Microdrip)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Timing options -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              تنبيه تمريضي مسبق قبل الانتهاء بـ:
+            </label>
+            <select id="early-alert-mins" class="w-full bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+              <option value="5">5 دقائق قبل الانتهاء</option>
+              <option value="10" selected>10 دقائق قبل الانتهاء (موصى به)</option>
+              <option value="15">15 دقيقة قبل الانتهاء</option>
+              <option value="20">20 دقيقة قبل الانتهاء</option>
+              <option value="0">عند الانتهاء تماماً فقط</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">
+              وقت بدء المغذي
+            </label>
+            <div class="flex gap-2">
+              <input type="time" id="start-time-input" 
+                     class="flex-1 bg-slate-900 border border-slate-700 focus:border-teal-500 rounded-xl px-3 py-2 text-sm text-white font-mono focus:outline-none">
+              <button type="button" id="set-now-time-btn" class="px-2.5 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-xl text-slate-200">الآن</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Calculation Preview Box -->
+        <div class="bg-gradient-to-r from-teal-950/60 to-slate-900 border border-teal-500/30 rounded-xl p-3.5 mt-2">
+          <span class="text-[11px] font-bold text-teal-400 uppercase tracking-wider block mb-1">النتيجة التقديرية الفورية:</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-center">
+            <div class="bg-slate-800/60 p-2 rounded-lg">
+              <span class="text-[10px] text-slate-400 block">المدة الكلية</span>
+              <span id="preview-duration" class="font-mono text-sm font-bold text-white">--</span>
+            </div>
+            <div class="bg-slate-800/60 p-2 rounded-lg">
+              <span class="text-[10px] text-slate-400 block">وقت الانتهاء المتوقع</span>
+              <span id="preview-end-time" class="font-mono text-sm font-bold text-teal-300">--</span>
+            </div>
+            <div class="col-span-2 sm:col-span-1 bg-slate-800/60 p-2 rounded-lg">
+              <span class="text-[10px] text-slate-400 block">التنبيه المسبق عند</span>
+              <span id="preview-alert-time" class="font-mono text-sm font-bold text-amber-300">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-700">
+          <button type="button" id="cancel-form-btn" class="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-xl">إلغاء</button>
+          <button type="submit" class="px-6 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-teal-500/25 transition">
+            حفظ وتفعيل التنبيه
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notification Toast Box -->
+  <div id="toast" class="fixed bottom-5 left-5 z-50 transform -translate-y-4 opacity-0 pointer-events-none transition-all duration-300 bg-slate-800 border border-teal-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm">
+    <div id="toast-icon" class="text-teal-400 flex-shrink-0">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div class="text-xs">
+      <h4 id="toast-title" class="font-bold text-white mb-0.5">تنبيه</h4>
+      <p id="toast-body" class="text-slate-300">محتوى الإشعار</p>
+    </div>
+  </div>
+
+  <script>
+    // State management
+    let beds = JSON.parse(localStorage.getItem('iv_nurse_beds') || '[]');
+    let historyLogs = JSON.parse(localStorage.getItem('iv_nurse_history') || '[]');
+    let isSoundMuted = JSON.parse(localStorage.getItem('iv_sound_muted') || 'false');
+    let currentMode = 'pump'; // 'pump' or 'gravity'
+    let audioContext = null;
+    let deferredInstallPrompt = null;
+    let wakeLock = null;
+    let wakeLockRequested = false;
+    let refreshingForUpdate = false;
+
+    function initAudio() {
+      try {
+        if (!audioContext) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) audioContext = new AudioCtx();
+        }
+        if (audioContext?.state === 'suspended') audioContext.resume();
+      } catch (e) {
+        console.warn('Audio init error:', e);
+      }
+    }
+
+    function playTone(frequency, startOffset = 0, duration = 0.18, gainValue = 0.08) {
+      if (isSoundMuted) return;
+      initAudio();
+      if (!audioContext) return;
+      const start = audioContext.currentTime + startOffset;
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(gainValue, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start(start);
+      osc.stop(start + duration + 0.02);
+    }
+
+    function playChime() {
+      if (isSoundMuted) return;
+      playTone(659.25, 0, 0.22, 0.055);
+      playTone(830.61, 0.08, 0.22, 0.045);
+      playTone(987.77, 0.16, 0.25, 0.04);
+    }
+
+    function playUrgentAlarm() {
+      if (isSoundMuted) return;
+      [0, 0.22, 0.44].forEach(offset => {
+        playTone(880, offset, 0.14, 0.075);
+        playTone(1046.5, offset + 0.02, 0.14, 0.06);
+      });
+    }
+
+    function showToast(title, message, isUrgent = false) {
+      const toast = document.getElementById('toast');
+      const toastTitle = document.getElementById('toast-title');
+      const toastBody = document.getElementById('toast-body');
+      
+      toastTitle.textContent = title;
+      toastBody.textContent = message;
+
+      if (isUrgent) {
+        toast.className = 'fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 bg-rose-950 border border-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm urgent-alert';
+      } else {
+        toast.className = 'fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 bg-slate-800 border border-teal-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm';
+      }
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+        toast.classList.remove('urgent-alert');
+      }, 5000);
+    }
+
+    function escapeHTML(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      })[char]);
+    }
+
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        showToast('الإشعارات غير مدعومة', 'هذا المتصفح لا يدعم إشعارات الويب.');
+        return false;
+      }
+      let permission = Notification.permission;
+      if (permission === 'default') permission = await Notification.requestPermission();
+      updateNotificationUI();
+      if (permission === 'granted') {
+        showToast('تم تفعيل الإشعارات', 'سيظهر إشعار نظام عندما يتمكن التطبيق من تنفيذ وقت التنبيه.');
+        return true;
+      }
+      showToast('لم يتم تفعيل الإشعارات', 'يمكنك تغيير الإذن من إعدادات المتصفح أو النظام.');
+      return false;
+    }
+
+    function updateNotificationUI() {
+      const label = document.getElementById('notification-status-text');
+      const btn = document.getElementById('notification-btn');
+      if (!label || !btn) return;
+      const permission = ('Notification' in window) ? Notification.permission : 'unsupported';
+      btn.classList.remove('border-teal-500/60', 'text-teal-300', 'border-rose-500/60', 'text-rose-300');
+      if (permission === 'granted') {
+        label.textContent = 'الإشعارات مفعلة';
+        btn.classList.add('border-teal-500/60', 'text-teal-300');
+      } else if (permission === 'denied') {
+        label.textContent = 'الإشعارات محظورة';
+        btn.classList.add('border-rose-500/60', 'text-rose-300');
+      } else if (permission === 'unsupported') {
+        label.textContent = 'غير مدعومة';
+      } else {
+        label.textContent = 'الإشعارات';
+      }
+    }
+
+    async function sendSystemNotification(title, body, tag, urgent = false) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const options = {
+        body, tag, renotify: true, requireInteraction: urgent,
+        icon: './icons/icon-192.png', badge: './icons/icon-192.png',
+        dir: 'rtl', lang: 'ar', data: { url: './' }
+      };
+      try {
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.showNotification(title, options);
+        } else {
+          new Notification(title, options);
+        }
+      } catch (err) {
+        console.warn('System notification error:', err);
+      }
+    }
+
+    async function requestWakeLock() {
+      if (!('wakeLock' in navigator)) {
+        showToast('إبقاء الشاشة غير مدعوم', 'هذا الجهاز لا يوفر Screen Wake Lock عبر المتصفح.');
+        return false;
+      }
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLockRequested = true;
+        wakeLock.addEventListener('release', () => {
+          wakeLock = null;
+          updateWakeLockUI();
+        });
+        updateWakeLockUI();
+        return true;
+      } catch (err) {
+        console.warn('Wake lock error:', err);
+        showToast('تعذر إبقاء الشاشة', 'قد يمنع وضع توفير الطاقة أو إعدادات النظام هذه الخاصية.');
+        return false;
+      }
+    }
+
+    async function toggleWakeLock() {
+      if (wakeLock) {
+        wakeLockRequested = false;
+        await wakeLock.release();
+        wakeLock = null;
+        updateWakeLockUI();
+      } else {
+        await requestWakeLock();
+      }
+    }
+
+    function updateWakeLockUI() {
+      const label = document.getElementById('wake-lock-status-text');
+      const btn = document.getElementById('wake-lock-btn');
+      if (!label || !btn) return;
+      if (wakeLock) {
+        label.textContent = 'الشاشة مستيقظة';
+        btn.classList.add('border-amber-500/60', 'text-amber-300');
+      } else {
+        label.textContent = 'إبقاء الشاشة';
+        btn.classList.remove('border-amber-500/60', 'text-amber-300');
+      }
+    }
+
+    function isStandaloneMode() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function updatePwaModeUI() {
+      const el = document.getElementById('pwa-mode-status');
+      if (el) el.textContent = isStandaloneMode() ? 'مثبت كتطبيق' : 'وضع المتصفح';
+    }
+
+    function updateNetworkUI() {
+      const el = document.getElementById('network-status');
+      if (!el) return;
+      el.textContent = navigator.onLine ? 'متصل بالشبكة' : 'وضع دون اتصال';
+      el.classList.toggle('text-amber-300', !navigator.onLine);
+      el.classList.toggle('border-amber-500/50', !navigator.onLine);
+    }
+
+    function calculateDurationInMinutes(volume, mode, pumpRate, dropsPerMin, dropFactor) {
+      if (mode === 'pump') {
+        if (!pumpRate || pumpRate <= 0) return 0;
+        // Time (hours) = Volume (mL) / Rate (mL/hr)
+        return (volume / pumpRate) * 60;
+      } else {
+        if (!dropsPerMin || dropsPerMin <= 0 || !dropFactor || dropFactor <= 0) return 0;
+        // Total drops = Volume * dropFactor
+        // Minutes = Total drops / dropsPerMin
+        return (volume * dropFactor) / dropsPerMin;
+      }
+    }
+
+    // Format minutes into HH:MM or dynamic readable string
+    function formatMinutesToHours(minutes) {
+      const totalSec = Math.round(minutes * 60);
+      const hrs = Math.floor(totalSec / 3600);
+      const mins = Math.floor((totalSec % 3600) / 60);
+      const secs = totalSec % 60;
+      
+      if (hrs > 0) {
+        return `${hrs} س و ${mins} د`;
+      }
+      return `${mins} د و ${secs} ث`;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      document.getElementById('current-clock').textContent = timeStr;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    function setVolume(v) {
+      document.getElementById('volume-input').value = v;
+      // Style buttons
+      document.querySelectorAll('.vol-btn').forEach(btn => {
+        if (parseInt(btn.textContent, 10) === Number(v)) {
+          btn.className = 'vol-btn flex-1 py-1.5 text-xs bg-teal-600 border border-teal-500 rounded-lg text-white font-bold transition';
+        } else {
+          btn.className = 'vol-btn flex-1 py-1.5 text-xs bg-slate-700 hover:bg-teal-600/40 border border-slate-600 rounded-lg text-slate-200 transition';
+        }
+      });
+      updateLiveCalculationPreview();
+    }
+
+    function setCurrentTimeForInput() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('start-time-input').value = `${hours}:${minutes}`;
+    }
+
+    function updateLiveCalculationPreview() {
+      const volume = parseFloat(document.getElementById('volume-input').value) || 0;
+      const pumpRate = parseFloat(document.getElementById('pump-rate').value) || 0;
+      const dropsPerMin = parseFloat(document.getElementById('drops-per-min').value) || 0;
+      const dropFactor = parseFloat(document.getElementById('drop-factor').value) || 20;
+      const earlyMins = parseFloat(document.getElementById('early-alert-mins').value) || 0;
+      const timeVal = document.getElementById('start-time-input').value;
+
+      const durationMinutes = calculateDurationInMinutes(volume, currentMode, pumpRate, dropsPerMin, dropFactor);
+
+      if (durationMinutes <= 0 || isNaN(durationMinutes)) {
+        document.getElementById('preview-duration').textContent = '--';
+        document.getElementById('preview-end-time').textContent = '--';
+        document.getElementById('preview-alert-time').textContent = '--';
+        return;
+      }
+
+      document.getElementById('preview-duration').textContent = formatMinutesToHours(durationMinutes);
+
+      // Calculate End Time
+      const now = new Date();
+      let startTime = new Date();
+      if (timeVal) {
+        const [h, m] = timeVal.split(':');
+        startTime.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+        if (startTime.getTime() - now.getTime() > 12 * 60 * 60 * 1000) {
+          startTime.setDate(startTime.getDate() - 1);
+        }
+      }
+
+      const endTime = new Date(startTime.getTime() + durationMinutes * 60000);
+      const alertTime = new Date(endTime.getTime() - earlyMins * 60000);
+
+      const endStr = endTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+      const alertStr = alertTime.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+      document.getElementById('preview-end-time').textContent = endStr;
+      document.getElementById('preview-alert-time').textContent = alertStr;
+    }
+
+    document.getElementById('volume-input').addEventListener('input', updateLiveCalculationPreview);
+    document.getElementById('pump-rate').addEventListener('input', updateLiveCalculationPreview);
+    document.getElementById('drops-per-min').addEventListener('input', updateLiveCalculationPreview);
+    document.getElementById('drop-factor').addEventListener('change', updateLiveCalculationPreview);
+    document.getElementById('early-alert-mins').addEventListener('change', updateLiveCalculationPreview);
+    document.getElementById('start-time-input').addEventListener('input', updateLiveCalculationPreview);
+    document.getElementById('set-now-time-btn').addEventListener('click', () => {
+      setCurrentTimeForInput();
+      updateLiveCalculationPreview();
+    });
+
+    // Mode Toggle (Pump vs Gravity)
+    const modePumpBtn = document.getElementById('mode-pump-btn');
+    const modeGravityBtn = document.getElementById('mode-gravity-btn');
+    const pumpInputs = document.getElementById('pump-inputs');
+    const gravityInputs = document.getElementById('gravity-inputs');
+
+    modePumpBtn.addEventListener('click', () => {
+      currentMode = 'pump';
+      modePumpBtn.className = 'py-2 text-xs font-bold rounded-lg bg-teal-600 text-white transition flex items-center justify-center gap-1.5 shadow';
+      modeGravityBtn.className = 'py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+      pumpInputs.classList.remove('hidden');
+      gravityInputs.classList.add('hidden');
+      updateLiveCalculationPreview();
+    });
+
+    modeGravityBtn.addEventListener('click', () => {
+      currentMode = 'gravity';
+      modeGravityBtn.className = 'py-2 text-xs font-bold rounded-lg bg-teal-600 text-white transition flex items-center justify-center gap-1.5 shadow';
+      modePumpBtn.className = 'py-2 text-xs font-bold rounded-lg text-slate-400 hover:text-white transition flex items-center justify-center gap-1.5';
+      gravityInputs.classList.remove('hidden');
+      pumpInputs.classList.add('hidden');
+      updateLiveCalculationPreview();
+    });
+
+    const toggleSoundBtn = document.getElementById('toggle-sound-btn');
+    const soundStatusText = document.getElementById('sound-status-text');
+    const soundIconOn = document.getElementById('sound-icon-on');
+
+    function updateSoundUI() {
+      if (isSoundMuted) {
+        soundStatusText.textContent = 'الصوت مكتوم';
+        soundIconOn.classList.replace('text-teal-400', 'text-rose-400');
+      } else {
+        soundStatusText.textContent = 'الصوت مفعل';
+        soundIconOn.classList.replace('text-rose-400', 'text-teal-400');
+      }
+      localStorage.setItem('iv_sound_muted', JSON.stringify(isSoundMuted));
+    }
+    updateSoundUI();
+
+    toggleSoundBtn.addEventListener('click', () => {
+      initAudio();
+      isSoundMuted = !isSoundMuted;
+      updateSoundUI();
+      if (!isSoundMuted) {
+        playChime();
+        showToast('تم تفعيل الصوت', 'سيعمل صوت التنبيه عند وصول الموعد المحدد.');
+      }
+    });
+
+    document.getElementById('test-alarm-btn').addEventListener('click', () => {
+      initAudio();
+      playUrgentAlarm();
+      showToast('تجربة نغمة الطوارئ', 'هذه نغمة التنبيه عند وصول المؤقت إلى وقت الانتهاء المتوقع.', true);
+    });
+
+    // Modal open / close handlers
+    const addModal = document.getElementById('add-modal');
+    const openAddModalBtn = document.getElementById('open-add-modal-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const cancelFormBtn = document.getElementById('cancel-form-btn');
+
+    openAddModalBtn.addEventListener('click', () => {
+      setCurrentTimeForInput();
+      updateLiveCalculationPreview();
+      addModal.classList.remove('hidden');
+      addModal.classList.add('flex');
+      initAudio();
+    });
+
+    function closeModal() {
+      addModal.classList.add('hidden');
+      addModal.classList.remove('flex');
+    }
+    closeModalBtn.addEventListener('click', closeModal);
+    cancelFormBtn.addEventListener('click', closeModal);
+
+    document.getElementById('infusion-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const bedNumber = document.getElementById('bed-number').value.trim();
+      const patientName = document.getElementById('patient-name').value.trim() || 'مريض غير محدد';
+      const solutionName = document.getElementById('solution-name').value.trim() || 'محلول وريدي';
+      const volume = parseFloat(document.getElementById('volume-input').value);
+      const pumpRate = parseFloat(document.getElementById('pump-rate').value);
+      const dropsPerMin = parseFloat(document.getElementById('drops-per-min').value);
+      const dropFactor = parseFloat(document.getElementById('drop-factor').value);
+      const earlyMins = parseFloat(document.getElementById('early-alert-mins').value);
+      const timeVal = document.getElementById('start-time-input').value;
+
+      const durationMinutes = calculateDurationInMinutes(volume, currentMode, pumpRate, dropsPerMin, dropFactor);
+
+      if (durationMinutes <= 0) {
+        showToast('خطأ في البيانات', 'يرجى التأكد من كتابة معدل التدفق أو عدد النقاط بشكل صحيح.');
+        return;
+      }
+
+      // Compute Start & End timestamps
+      const now = new Date();
+      let startTime = new Date();
+      if (timeVal) {
+        const [h, m] = timeVal.split(':');
+        startTime.setHours(parseInt(h, 10), parseInt(m, 10), 0, 0);
+        if (startTime.getTime() - now.getTime() > 12 * 60 * 60 * 1000) {
+          startTime.setDate(startTime.getDate() - 1);
+        }
+      }
+      
+      const startTimeMs = startTime.getTime();
+      const endTimeMs = startTimeMs + Math.round(durationMinutes * 60000);
+      const earlyAlertTimeMs = endTimeMs - (earlyMins * 60000);
+
+      const newBed = {
+        id: 'bed_' + Date.now(),
+        bedNumber,
+        patientName,
+        solutionName,
+        volume,
+        currentMode,
+        pumpRate: currentMode === 'pump' ? pumpRate : null,
+        dropsPerMin: currentMode === 'gravity' ? dropsPerMin : null,
+        dropFactor: currentMode === 'gravity' ? dropFactor : null,
+        earlyMins,
+        startTimeMs,
+        endTimeMs,
+        earlyAlertTimeMs,
+        totalDurationMs: durationMinutes * 60000,
+        earlyAlertTriggered: false,
+        endAlertTriggered: false,
+        status: 'running' // 'running', 'warning', 'ended', 'paused'
+      };
+
+      beds.unshift(newBed);
+      saveBeds();
+      renderBeds();
+      closeModal();
+      document.getElementById('infusion-form').reset();
+      setVolume(500);
+
+      playChime();
+      showToast('تمت إضافة السرير بنجاح', `تمت جدولة مغذي ${bedNumber} للانتهاء في تمام ${new Date(endTimeMs).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}`);
+    });
+
+    function saveBeds() {
+      localStorage.setItem('iv_nurse_beds', JSON.stringify(beds));
+      updateStats();
+    }
+
+    function formatCountdown(ms) {
+      if (ms <= 0) return '00:00:00';
+      const totalSec = Math.floor(ms / 1000);
+      const hrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSec % 60).padStart(2, '0');
+      return `${hrs}:${mins}:${secs}`;
+    }
+
+    function renderBeds() {
+      const container = document.getElementById('beds-container');
+      const emptyState = document.getElementById('empty-state');
+      
+      if (beds.length === 0) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        updateStats();
+        return;
+      }
+      
+      emptyState.classList.add('hidden');
+      const nowMs = Date.now();
+
+      container.innerHTML = beds.map(bed => {
+        const safeBedNumber = escapeHTML(bed.bedNumber);
+        const safePatientName = escapeHTML(bed.patientName);
+        const safeSolutionName = escapeHTML(bed.solutionName);
+        const remainingMs = Math.max(0, bed.endTimeMs - nowMs);
+        const elapsedMs = Math.max(0, nowMs - bed.startTimeMs);
+        const progressPercent = Math.min(100, Math.max(0, (elapsedMs / bed.totalDurationMs) * 100));
+        const remainingVolume = Math.max(0, Math.round(bed.volume * (1 - (progressPercent / 100))));
+
+        let statusBadge = '';
+        let cardBorder = 'border-slate-700/80';
+        let cardBg = 'bg-slate-800/80';
+        let pulseClass = '';
+
+        if (bed.status === 'ended' || remainingMs <= 0) {
+          statusBadge = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> انتهى المحلول</span>';
+          cardBorder = 'border-rose-500';
+          cardBg = 'bg-rose-950/20';
+          pulseClass = 'urgent-alert';
+        } else if (bed.status === 'warning' || (bed.earlyAlertTriggered && remainingMs > 0)) {
+          statusBadge = `<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> قارب على الانتهاء</span>`;
+          cardBorder = 'border-amber-500/60';
+          cardBg = 'bg-amber-950/20';
+        } else {
+          statusBadge = '<span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> تدفق مستقر</span>';
+        }
+
+        const endTimeStr = new Date(bed.endTimeMs).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+
+        return `
+          <div class="relative rounded-2xl ${cardBg} border ${cardBorder} ${pulseClass} p-4 sm:p-5 shadow-xl transition-all duration-300 hover:border-slate-500 flex flex-col justify-between">
+            <div>
+              <!-- Bed Header -->
+              <div class="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-lg sm:text-xl font-extrabold text-white bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-xl">
+                      ${safeBedNumber}
+                    </span>
+                    <span class="text-xs text-slate-400 font-semibold">${safePatientName}</span>
+                  </div>
+                  <p class="text-xs text-teal-400 mt-1.5 font-medium flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                    ${safeSolutionName}
+                  </p>
+                </div>
+                ${statusBadge}
+              </div>
+
+              <!-- Main countdown box -->
+              <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-700/60 my-3 text-center">
+                <span class="text-[11px] font-bold text-slate-400 block uppercase">الوقت المتبقي حتى النفاد</span>
+                <span class="font-mono text-2xl sm:text-3xl font-extrabold ${remainingMs <= 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'} tracking-wider">
+                  ${formatCountdown(remainingMs)}
+                </span>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
+                  <span>الانتهاء: <strong class="text-white font-mono">${endTimeStr}</strong></span>
+                  <span>المتبقي: <strong class="text-teal-300 font-mono">${remainingVolume} مل</strong> / ${bed.volume} مل</span>
+                </div>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden my-2 border border-slate-700/40">
+                <div class="h-2.5 rounded-full transition-all duration-500 ${remainingMs <= 0 ? 'bg-rose-500' : progressPercent > 80 ? 'bg-amber-400' : 'bg-gradient-to-r from-teal-500 to-emerald-400'}" 
+                     style="width: ${progressPercent}%"></div>
+              </div>
+
+              <!-- Infusion Details specs -->
+              <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 my-3">
+                <div class="bg-slate-900/50 p-2 rounded-lg">
+                  <span class="block text-[10px] text-slate-500">طريقة الإعطاء</span>
+                  <span class="text-slate-200 font-semibold">${bed.currentMode === 'pump' ? 'مضخة تسريب' : 'تنقيط جاذبية'}</span>
+                </div>
+                <div class="bg-slate-900/50 p-2 rounded-lg">
+                  <span class="block text-[10px] text-slate-500">المعدل المضبوط</span>
+                  <span class="text-slate-200 font-mono font-semibold">
+                    ${bed.currentMode === 'pump' ? `${bed.pumpRate} مل/ساعة` : `${bed.dropsPerMin} نقطة/د`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Buttons for the Nurse -->
+            <div class="flex items-center gap-2 pt-2 border-t border-slate-700/60 mt-1">
+              <button onclick="completeBed('${bed.id}')" class="flex-1 py-2 text-xs font-bold bg-teal-600 hover:bg-teal-500 text-white rounded-xl transition flex items-center justify-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                اكتمال واستبدال
+              </button>
+              <button onclick="extendBedTime('${bed.id}', 15)" title="تمديد 15 دقيقة إضافية" class="px-2.5 py-2 text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition">
+                +15 د
+              </button>
+              <button onclick="removeBed('${bed.id}')" title="حذف السرير" class="px-2.5 py-2 text-xs font-semibold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateStats();
+    }
+
+    window.completeBed = function(id) {
+      const bedIndex = beds.findIndex(b => b.id === id);
+      if (bedIndex === -1) return;
+      const bed = beds[bedIndex];
+
+      // Add to history log
+      const logEntry = {
+        bedNumber: bed.bedNumber,
+        patientName: bed.patientName,
+        solutionName: `${bed.solutionName} (${bed.volume} مل)`,
+        startTime: new Date(bed.startTimeMs).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        endTime: new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }),
+        status: 'مكتمل بنجاح'      };
+      historyLogs.unshift(logEntry);
+      if (historyLogs.length > 20) historyLogs.pop();
+      localStorage.setItem('iv_nurse_history', JSON.stringify(historyLogs));
+
+      // Remove from active
+      beds.splice(bedIndex, 1);
+      saveBeds();
+      renderBeds();
+      renderHistory();
+      showToast('تم إنهاء المحلول', `تم نقل ${bed.bedNumber} إلى السجل المكتمل بنجاح.`);
+    };
+
+    window.extendBedTime = function(id, extraMinutes) {
+      const bed = beds.find(b => b.id === id);
+      if (!bed) return;
+      bed.endTimeMs += extraMinutes * 60000;
+      bed.totalDurationMs += extraMinutes * 60000;
+      bed.earlyAlertTimeMs = bed.endTimeMs - (bed.earlyMins * 60000);
+      bed.earlyAlertTriggered = false;
+      bed.endAlertTriggered = false;
+      bed.status = 'running';
+      saveBeds();
+      renderBeds();
+      showToast('تم تمديد الوقت', `تمت إضافة ${extraMinutes} دقيقة إضافية لسرير ${bed.bedNumber}.`);
+    };
+
+    window.removeBed = function(id) {
+      const bed = beds.find(b => b.id === id);
+      if (!bed) return;
+      if (!window.confirm(`حذف ${bed.bedNumber} من المتابعة؟ لن يُضاف إلى سجل المكتمل.`)) return;
+      beds = beds.filter(b => b.id !== id);
+      saveBeds();
+      renderBeds();
+      showToast('تم الإلغاء', 'تم حذف السرير من المتابعة.');
+    };
+
+    function renderHistory() {
+      const tbody = document.getElementById('history-table-body');
+      if (historyLogs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">لا توجد عمليات مكتملة حتى الآن</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = historyLogs.map(log => `
+        <tr class="hover:bg-slate-800/40">
+          <td class="py-2 px-3 font-bold text-white font-mono">${escapeHTML(log.bedNumber)}</td>
+          <td class="py-2 px-3 text-slate-300">${escapeHTML(log.patientName)}</td>
+          <td class="py-2 px-3 text-teal-400">${escapeHTML(log.solutionName)}</td>
+          <td class="py-2 px-3 font-mono">${escapeHTML(log.startTime)}</td>
+          <td class="py-2 px-3 font-mono text-emerald-400">${escapeHTML(log.endTime)}</td>
+          <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold text-[11px]">${escapeHTML(log.status)}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('clear-history-btn').addEventListener('click', () => {
+      if (historyLogs.length && !window.confirm('مسح سجل المحاليل المكتملة من هذا الجهاز؟')) return;
+      historyLogs = [];
+      localStorage.removeItem('iv_nurse_history');
+      renderHistory();
+      showToast('سجل فارغ', 'تم تنظيف سجل المحاليل المكتملة.');
+    });
+
+    function checkAlertsAndTick() {
+      const nowMs = Date.now();
+      let shouldReRender = false;
+
+      beds.forEach(bed => {
+        // Early Warning Check
+        if (nowMs >= bed.earlyAlertTimeMs && nowMs < bed.endTimeMs && !bed.earlyAlertTriggered) {
+          bed.earlyAlertTriggered = true;
+          bed.status = 'warning';
+          shouldReRender = true;
+          playChime();
+          showToast(`تنبيه مبكر: ${bed.bedNumber}`, `المحلول للمريض (${bed.patientName}) قارب على الانتهاء خلال ${bed.earlyMins} دقيقة! يُرجى الاستعداد.`);
+          sendSystemNotification(
+            `تنبيه مبكر — ${bed.bedNumber}`,
+            `المحلول قارب على الانتهاء خلال ${bed.earlyMins} دقيقة.`,
+            `iv-early-${bed.id}`,
+            false
+          );
+        }
+
+        // Completion / Emptiness Check
+        if (nowMs >= bed.endTimeMs && !bed.endAlertTriggered) {
+          bed.endAlertTriggered = true;
+          bed.status = 'ended';
+          shouldReRender = true;
+          playUrgentAlarm();
+          showToast(`🚨 تنبيه عاجل: ${bed.bedNumber}`, `وصل المؤقت إلى نهاية وقت المحلول للمريض (${bed.patientName}). تحقّق سريريًا من الحالة واتبع بروتوكول القسم.`, true);
+          sendSystemNotification(
+            `تنبيه عاجل — ${bed.bedNumber}`,
+            'وصل المؤقت إلى نهاية وقت المحلول. تحقّق سريريًا واتبع بروتوكول القسم.',
+            `iv-end-${bed.id}`,
+            true
+          );
+        }
+      });
+
+      if (shouldReRender) {
+        saveBeds();
+      }
+      renderBeds();
+    }
+
+    // Dynamic Top Statistics Counter
+    function updateStats() {
+      document.getElementById('active-count-badge').textContent = `${beds.length} سرير`;
+      document.getElementById('stat-running').textContent = beds.filter(b => b.status === 'running').length;
+      document.getElementById('stat-warning').textContent = beds.filter(b => b.status === 'warning').length;
+      document.getElementById('stat-ended').textContent = beds.filter(b => b.status === 'ended' || Date.now() >= b.endTimeMs).length;
+      document.getElementById('stat-completed').textContent = historyLogs.length;
+    }
+
+    // Main 1-second interval for real-time countdown updates
+    setInterval(checkAlertsAndTick, 1000);
+
+    // PWA / install / notifications / wake lock
+    document.getElementById('notification-btn').addEventListener('click', requestNotificationPermission);
+    document.getElementById('wake-lock-btn').addEventListener('click', toggleWakeLock);
+
+    window.addEventListener('beforeinstallprompt', event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      updatePwaModeUI();
+      showToast('تم تثبيت التطبيق', 'يمكنك الآن فتحه من الشاشة الرئيسية.');
+    });
+
+    document.getElementById('install-app-btn').addEventListener('click', async () => {
+      if (isStandaloneMode()) {
+        showToast('التطبيق مثبت', 'أنت تستخدم التطبيق بالفعل في وضع PWA.');
+        return;
+      }
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+      }
+      const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      if (isIOS) {
+        alert('لتثبيت التطبيق على iPhone/iPad: افتح الصفحة في Safari ثم اضغط زر المشاركة، واختر "إضافة إلى الشاشة الرئيسية".');
+      } else {
+        showToast('التثبيت', 'إذا لم يظهر خيار التثبيت، افتح قائمة المتصفح واختر تثبيت التطبيق/إضافة إلى الشاشة الرئيسية.');
+      }
+    });
+
+    window.addEventListener('online', updateNetworkUI);
+    window.addEventListener('offline', updateNetworkUI);
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        checkAlertsAndTick();
+        if (wakeLockRequested && !wakeLock) await requestWakeLock();
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+
+          const watchInstalling = worker => {
+            if (!worker) return;
+            worker.addEventListener('statechange', () => {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                document.getElementById('update-app-btn').classList.remove('hidden');
+                showToast('يتوفر تحديث', 'اضغط "تحديث متاح" لتحميل النسخة الجديدة.');
+              }
+            });
+          };
+
+          watchInstalling(registration.installing);
+          registration.addEventListener('updatefound', () => watchInstalling(registration.installing));
+
+          document.getElementById('update-app-btn').addEventListener('click', () => {
+            if (registration.waiting) {
+              registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } else {
+              registration.update();
+              showToast('جارٍ فحص التحديث', 'سيظهر زر التحديث عند توفر نسخة جديدة.');
+            }
+          });
+
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshingForUpdate) return;
+            refreshingForUpdate = true;
+            window.location.reload();
+          });
+
+          registration.update().catch(() => {});
+        } catch (err) {
+          console.warn('Service worker registration failed:', err);
+        }
+      });
+    }
+
+    updateNotificationUI();
+    updateWakeLockUI();
+    updateNetworkUI();
+    updatePwaModeUI();
+
+    // Initial setup on boot
+    setCurrentTimeForInput();
+    updateLiveCalculationPreview();
+    renderBeds();
+    renderHistory();
+    updateStats();
+  </script>
+</body>
+</html>
