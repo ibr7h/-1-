@@ -50,7 +50,46 @@
       border-radius: 9999px;
     }
   </style>
-<style>:root{--moh-green:#00846a;--moh-dark:#006c57;--ink:#18332d;--muted:#61736f;--border:#d8e5e1}html{background:#eef6f3}body{background:linear-gradient(180deg,#f7fbfa,#edf6f3)!important;color:var(--ink)!important}.bg-slate-900,.bg-slate-900\/80{background-color:#f2f8f6!important}.bg-slate-800,.bg-slate-800\/80,.bg-slate-800\/60,.bg-slate-800\/50,.bg-slate-800\/40,.bg-slate-800\/30{background-color:rgba(255,255,255,.97)!important}.bg-slate-700{background:#edf5f2!important}.hover\:bg-slate-600:hover,.hover\:bg-slate-700:hover{background:#e1efea!important}.border-slate-700,.border-slate-700\/80,.border-slate-700\/60,.border-slate-700\/50,.border-slate-600{border-color:var(--border)!important}.text-white,.text-slate-100{color:#173c33!important}.text-slate-200,.text-slate-300{color:#36574f!important}.text-slate-400,.text-slate-500{color:var(--muted)!important}.text-teal-300,.text-teal-400,.text-emerald-400{color:var(--moh-green)!important}.bg-teal-500,.bg-teal-400,.bg-emerald-500{background:var(--moh-green)!important}.bg-teal-500\/20{background:#e3f3ee!important}.border-teal-500\/30{border-color:#b7dcd1!important}.from-teal-600,.from-teal-500{--tw-gradient-from:var(--moh-green)!important}.to-emerald-400,.to-emerald-500{--tw-gradient-to:#22a887!important}.hover\:from-teal-600:hover{--tw-gradient-from:var(--moh-dark)!important}.hover\:to-emerald-600:hover{--tw-gradient-to:#16866d!important}input,select,textarea{background:#fff!important;color:var(--ink)!important;border-color:#cbded8!important}input:focus,select:focus,textarea:focus{border-color:var(--moh-green)!important;box-shadow:0 0 0 3px rgba(0,132,106,.12)!important}button.bg-gradient-to-r,button.bg-teal-500,button.bg-emerald-500{color:#fff!important}.text-amber-400{color:#a66a00!important}.text-rose-500,.text-rose-400{color:#c43d4b!important}.text-sky-400{color:#397c8c!important}</style></head>
+<style>:root{--moh-green:#00846a;--moh-dark:#006c57;--ink:#18332d;--muted:#61736f;--border:#d8e5e1}html{background:#eef6f3}body{background:linear-gradient(180deg,#f7fbfa,#edf6f3)!important;color:var(--ink)!important}.bg-slate-900,.bg-slate-900\/80{background-color:#f2f8f6!important}.bg-slate-800,.bg-slate-800\/80,.bg-slate-800\/60,.bg-slate-800\/50,.bg-slate-800\/40,.bg-slate-800\/30{background-color:rgba(255,255,255,.97)!important}.bg-slate-700{background:#edf5f2!important}.hover\:bg-slate-600:hover,.hover\:bg-slate-700:hover{background:#e1efea!important}.border-slate-700,.border-slate-700\/80,.border-slate-700\/60,.border-slate-700\/50,.border-slate-600{border-color:var(--border)!important}.text-white,.text-slate-100{color:#173c33!important}.text-slate-200,.text-slate-300{color:#36574f!important}.text-slate-400,.text-slate-500{color:var(--muted)!important}.text-teal-300,.text-teal-400,.text-emerald-400{color:var(--moh-green)!important}.bg-teal-500,.bg-teal-400,.bg-emerald-500{background:var(--moh-green)!important}.bg-teal-500\/20{background:#e3f3ee!important}.border-teal-500\/30{border-color:#b7dcd1!important}.from-teal-600,.from-teal-500{--tw-gradient-from:var(--moh-green)!important}.to-emerald-400,.to-emerald-500{--tw-gradient-to:#22a887!important}.hover\:from-teal-600:hover{--tw-gradient-from:var(--moh-dark)!important}.hover\:to-emerald-600:hover{--tw-gradient-to:#16866d!important}input,select,textarea{background:#fff!important;color:var(--ink)!important;border-color:#cbded8!important}input:focus,select:focus,textarea:focus{border-color:var(--moh-green)!important;box-shadow:0 0 0 3px rgba(0,132,106,.12)!important}button.bg-gradient-to-r,button.bg-teal-500,button.bg-emerald-500{color:#fff!important}.text-amber-400{color:#a66a00!important}.text-rose-500,.text-rose-400{color:#c43d4b!important}.text-sky-400{color:#397c8c!important}</style><style id="clinical-color-harmony">
+  /* Clinical light theme: semantic colors must override the legacy dark-theme utilities. */
+  #history-table-body { color:#36574f; }
+  table thead {
+    background:#edf5f2 !important;
+    color:#36574f !important;
+    border-color:#d8e5e1 !important;
+  }
+  table thead th { color:#36574f !important; font-weight:800; }
+  table tbody tr { border-color:#e3ece9 !important; }
+  #clear-history-btn { color:#667a75 !important; }
+  #clear-history-btn:hover { color:#b42318 !important; }
+
+  /* Toasts use explicit semantic surfaces instead of inherited identity green. */
+  #toast.toast-normal {
+    background:#ffffff !important;
+    border:1px solid #9bcfc0 !important;
+    color:#18332d !important;
+    box-shadow:0 18px 45px rgba(24,51,45,.18) !important;
+  }
+  #toast.toast-urgent {
+    background:#fff1f2 !important;
+    border:2px solid #e11d48 !important;
+    color:#881337 !important;
+    box-shadow:0 18px 45px rgba(190,18,60,.18) !important;
+  }
+  #toast.toast-normal #toast-title { color:#006c57 !important; }
+  #toast.toast-normal #toast-body { color:#36574f !important; }
+  #toast.toast-urgent #toast-title { color:#9f1239 !important; }
+  #toast.toast-urgent #toast-body { color:#881337 !important; }
+  #toast.toast-normal svg { color:#00846a !important; }
+  #toast.toast-urgent svg { color:#e11d48 !important; }
+
+  /* Primary/action buttons retain white labels on identity/action colors. */
+  button.bg-sky-600, button.bg-teal-600,
+  button[class*="bg-gradient-to-r"] { color:#fff !important; }
+  #pwa-status-panel { color:#61736f !important; }
+  #pwa-status-panel > span { background:#fff !important; color:#526a64 !important; border-color:#d8e5e1 !important; }
+</style>
+</head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans selection:bg-teal-500 selection:text-white">
   <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col min-h-screen">
     
@@ -235,7 +274,7 @@
       <p>أداة مساعدة محلية لحساب الزمن ومتابعة المحاليل الوريدية — لا تستبدل المضخة أو بروتوكول المراقبة السريرية.</p>
       <p>لا تعتمد على هذا التطبيق كوسيلة التنبيه الوحيدة، خصوصًا عند إغلاق التطبيق أو تعليق النظام له في الخلفية.</p>
       <p>البيانات تحفظ محليًا على هذا الجهاز. يفضّل استخدام رقم الملف/معرّف مختصر بدل الاسم الكامل.</p>
-      <p class="text-slate-600">IV Nurse Alert PWA • v1.4.0</p>
+      <p class="text-slate-600">IV Nurse Alert PWA • v1.4.1</p>
     </footer>
   </div>
 
@@ -477,9 +516,9 @@
       toastBody.textContent = message;
 
       if (isUrgent) {
-        toast.className = 'fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 bg-rose-950 border border-rose-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm urgent-alert';
+        toast.className = 'toast-urgent fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 px-4 py-3 rounded-xl flex items-center gap-3 max-w-sm urgent-alert';
       } else {
-        toast.className = 'fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 bg-slate-800 border border-teal-500 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 max-w-sm';
+        toast.className = 'toast-normal fixed bottom-5 left-5 z-50 transform translate-y-0 opacity-100 transition-all duration-300 px-4 py-3 rounded-xl flex items-center gap-3 max-w-sm';
       }
 
       setTimeout(() => {
