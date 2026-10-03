@@ -1,4 +1,4 @@
-const VERSION = 'iv-drip-nurse-alert-v1.3.1';
+const VERSION = 'iv-drip-nurse-alert-v1.4.0';
 const APP_CACHE = VERSION + '-app';
 const RUNTIME_CACHE = VERSION + '-runtime';
 const APP_SHELL = ['./','./index.html','./manifest.webmanifest','./offline.html','./icons/icon.svg'];
