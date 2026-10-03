@@ -89,6 +89,26 @@
   #pwa-status-panel { color:#61736f !important; }
   #pwa-status-panel > span { background:#fff !important; color:#526a64 !important; border-color:#d8e5e1 !important; }
 </style>
+<style id="clinical-light-complete">
+  html, body { color-scheme: light !important; }
+  .bg-slate-900\/90 { background:#fff !important; }
+  .bg-slate-900\/50 { background:#f4faf8 !important; }
+  .bg-slate-800\/70 { background:#edf5f2 !important; }
+  .border-slate-800 { border-color:#dfeae6 !important; }
+  .divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color:#e3ece9 !important; }
+  #add-modal { background:rgba(24,51,45,.22) !important; }
+  #add-modal > div { background:#fff !important; border-color:#d8e5e1 !important; }
+  #add-modal label { color:#36574f !important; }
+  #add-modal h3 { color:#18332d !important; }
+  #close-modal-btn { color:#61736f !important; }
+  #close-modal-btn:hover { color:#18332d !important; background:#edf5f2 !important; }
+  #beds-container .bg-white { background:#fff !important; }
+  #beds-container .bg-emerald-50\/60 { background:#f4faf8 !important; }
+  #beds-container .text-white { color:#18332d !important; }
+  #beds-container button.bg-teal-600 { color:#fff !important; background:#00846a !important; }
+  #beds-container button.bg-slate-700 { background:#edf5f2 !important; color:#36574f !important; border:1px solid #d8e5e1 !important; }
+  #beds-container button.bg-rose-50 { background:#fff1f2 !important; color:#be123c !important; border-color:#fecdd3 !important; }
+</style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans selection:bg-teal-500 selection:text-white">
   <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 flex flex-col min-h-screen">
@@ -246,7 +266,7 @@
       </div>
       <div class="overflow-x-auto">
         <table class="w-full text-right text-xs text-slate-300">
-          <thead class="text-slate-400 bg-slate-800/70 border-b border-slate-700">
+          <thead class="text-slate-400 bg-emerald-50 border-b border-slate-700">
             <tr>
               <th class="py-2.5 px-3">رقم السرير</th>
               <th class="py-2.5 px-3">المريض</th>
@@ -256,7 +276,7 @@
               <th class="py-2.5 px-3">الحالة</th>
             </tr>
           </thead>
-          <tbody id="history-table-body" class="divide-y divide-slate-800">
+          <tbody id="history-table-body" class="divide-y divide-emerald-100">
             <!-- Dynamically populated rows -->
           </tbody>
         </table>
@@ -274,11 +294,11 @@
       <p>أداة مساعدة محلية لحساب الزمن ومتابعة المحاليل الوريدية — لا تستبدل المضخة أو بروتوكول المراقبة السريرية.</p>
       <p>لا تعتمد على هذا التطبيق كوسيلة التنبيه الوحيدة، خصوصًا عند إغلاق التطبيق أو تعليق النظام له في الخلفية.</p>
       <p>البيانات تحفظ محليًا على هذا الجهاز. يفضّل استخدام رقم الملف/معرّف مختصر بدل الاسم الكامل.</p>
-      <p class="text-slate-600">IV Nurse Alert PWA • v1.4.1</p>
+      <p class="text-slate-600">IV Nurse Alert PWA • v1.4.2</p>
     </footer>
   </div>
 
-  <div id="add-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
+  <div id="add-modal" class="fixed inset-0 z-50 bg-slate-900/20 backdrop-blur-sm hidden items-center justify-center p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-800 border border-slate-700 w-full max-w-xl rounded-2xl shadow-2xl p-5 sm:p-6 my-8 transform transition-all overscroll-contain">
       <div class="flex items-center justify-between pb-4 border-b border-slate-700 mb-5">
         <div class="flex items-center gap-2">
@@ -1031,7 +1051,7 @@
               <div class="flex items-start justify-between gap-2 mb-3">
                 <div>
                   <div class="flex items-center gap-2">
-                    <span class="text-lg sm:text-xl font-extrabold text-white bg-slate-900/90 border border-slate-700 px-3 py-1 rounded-xl">
+                    <span class="text-lg sm:text-xl font-extrabold text-white bg-white border border-slate-700 px-3 py-1 rounded-xl">
                       ${safeBedNumber}
                     </span>
                     <span class="text-xs text-slate-400 font-semibold">${safePatientName}</span>
@@ -1045,12 +1065,12 @@
               </div>
 
               <!-- Main countdown box -->
-              <div class="bg-slate-900/90 rounded-xl p-3.5 border border-slate-700/60 my-3 text-center">
+              <div class="bg-white rounded-xl p-3.5 border border-slate-700/60 my-3 text-center">
                 <span class="text-[11px] font-bold text-slate-400 block uppercase">الوقت المتبقي حتى النفاد</span>
                 <span class="font-mono text-2xl sm:text-3xl font-extrabold ${countdownColor} tracking-wider">
                   ${formatCountdown(remainingMs)}
                 </span>
-                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-slate-800">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-2 border-t border-emerald-100">
                   <span>الانتهاء: <strong class="text-white font-mono">${endTimeStr}</strong></span>
                   <span>المتبقي: <strong class="text-teal-300 font-mono">${remainingVolume} مل</strong> / ${bed.volume} مل</span>
                 </div>
@@ -1064,11 +1084,11 @@
 
               <!-- Infusion Details specs -->
               <div class="grid grid-cols-2 gap-2 text-xs text-slate-400 my-3">
-                <div class="bg-slate-900/50 p-2 rounded-lg">
+                <div class="bg-emerald-50/60 p-2 rounded-lg">
                   <span class="block text-[10px] text-slate-500">طريقة الإعطاء</span>
                   <span class="text-slate-200 font-semibold">${bed.currentMode === 'pump' ? 'مضخة تسريب' : 'تنقيط جاذبية'}</span>
                 </div>
-                <div class="bg-slate-900/50 p-2 rounded-lg">
+                <div class="bg-emerald-50/60 p-2 rounded-lg">
                   <span class="block text-[10px] text-slate-500">المعدل المضبوط</span>
                   <span class="text-slate-200 font-mono font-semibold">
                     ${bed.currentMode === 'pump' ? `${bed.pumpRate} مل/ساعة` : `${bed.dropsPerMin} نقطة/د`}
@@ -1086,7 +1106,7 @@
               <button onclick="extendBedTime('${bed.id}', 15)" title="تمديد 15 دقيقة إضافية" class="px-2.5 py-2 text-xs font-semibold bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl transition">
                 +15 د
               </button>
-              <button onclick="removeBed('${bed.id}')" title="حذف السرير" class="px-2.5 py-2 text-xs font-semibold bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl transition">
+              <button onclick="removeBed('${bed.id}')" title="حذف السرير" class="px-2.5 py-2 text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
               </button>
             </div>
